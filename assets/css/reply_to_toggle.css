@@ -1,11 +1,58 @@
-.reply-to-toggler,
-.reply-to-show {
+.reply-to-toggler {
   display: none;
+}
+.reply-to-show {
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transform: translateY(-100%);
+  margin-bottom: -50em;
+  transition: all 0.5s linear;
 }
 
 .reply-to-toggler[type="checkbox"]:checked + .reply-to-show {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0%);
+  transition: all 0.5s linear;
+  margin-bottom: 0em;
 }
 .reply-to-toggler[type="checkbox"]:checked + .reply-to-show + .reply-to-hide {
   display: none;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    visibility: hidden;
+  }
+  100% {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.reply-to-inner {
+  position: relative;
+  overflow: hidden;
+}
+.hide2 {
+  opacity: 1;
+  overflow: hidden;
+  transform: translateY(0);
+  transition: all 0.5s linear, margin 0s linear 0s;
+}
+.hide2 p {
+  padding: 10px;
+  margin: 0;
+}
+.ex2 .follow {
+  clear: both;
+}
+
+.ex2 input[type="checkbox"]:checked + .inner .hide2 {
+  opacity: 0;
+  transform: translateY(-100%);
+  margin-bottom: -999em;
+  transition: all 0.5s linear, margin 0s linear 0.5s;
 }
