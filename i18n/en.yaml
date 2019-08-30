@@ -260,7 +260,7 @@
   translation: Comment (markdown is accepted) *
 
 - id: subscribe_to_new_comments
-  translation: Notify me of new comments on this post
+  translation: Send me an email when someone comments on this post.
 
 - id: submit_comment
   translation: Submit  
@@ -268,14 +268,38 @@
 - id: thanks
   translation: Thank you
 
+  id: oops
+  translation: OOPS!
+
 - id: comment_submission_confirmation
   translation: Your comment has been submitted and will be published once it has been approved.
+  
+  id: comment_submission_confirmation_pr
+  translation: Click here to see the pull request you generated
+  
+  id: comment_submission_failure
+  translation: Your comment has not been submitted. Please go back and try again. Thank You!
+  
+  id: comment_submission_failure_persistance
+  translation: If this error persists, please open an issue by
+  
+  id: comment_submission_failure_open_issue
+  translation: clicking here
 
 - id: click_here
   translation: Click here
 
-- id: see_comment_pullrequest
-  translation: to see the pull request you generated.
-
 - id: ok
   translation: OK
+
+- id: reply_to
+  translation: Reply to
+
+- id: in_reply_to
+  translation: In reply to
+  
+- id: reply_to_thread
+  translation: Reply to thread
+
+- id: cancel
+  translation: Cancel

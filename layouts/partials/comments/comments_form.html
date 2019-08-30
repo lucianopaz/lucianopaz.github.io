@@ -1,0 +1,75 @@
+<div id="comment-submitted" class="dialog">
+  <h3>{{ i18n "thanks" }}</h3>
+  <p>{{ i18n "comment_submission_confirmation" }}</p>
+  {{ if (.Site.Params.githubPullURL) }}
+    <p><a href="https://github.com/{{ .Site.Params.staticman.username }}/{{ .Site.Params.staticman.repository }}/pulls"> {{ i18n "comment_submission_confirmation_pr" }}</a>.</p>
+  {{ end }}
+</div>
+
+<div id="comment-error" class="dialog">
+  <h3>{{ i18n "oops" }}</h3>
+  <p>{{ i18n "comment_submission_failure" }}</p>
+  <p>{{ i18n "comment_submission_failure_persistance" }} <a href="https://github.com/{{ .Site.Params.staticman.username }}/{{ .Site.Params.staticman.repository }}/issues"> {{ i18n "comment_submission_failure_open_issue" }}</a>.</p>
+</div>
+
+<div id="comment-form">
+  <h3 id="comment-form-header">{{ i18n "leave_comment" }}</h3>
+  {{ i18n "email_used_for" }} <a href="https://gravatar.com" target="_blank">{{ i18n "gravatar" }}</a> {{ i18n "email_used_for_reason" }}
+  <form class="post-new-comment" method="POST" action="https://dev.staticman.net/v3/entry/github/{{ .Site.Params.staticman.username }}/{{ .Site.Params.staticman.repository }}/{{ .Site.Params.staticman.branch }}/comments">
+    <input type="hidden" name="options[redirect]" value="{{ .Permalink }}#comment-submitted">
+    <input type="hidden" name="options[redirectError]" value="{{ .Permalink }}#comment-error">
+    <input type="hidden" name="options[slug]" value="{{ .File.ContentBaseName  }}">
+    <input type="hidden" name="options[section]" value="{{ .Section }}">
+    <input type="hidden" name="options[origin]" value="{{ .Permalink }}">
+    <input type="hidden" name="options[parent]" value="{{ .File.ContentBaseName }}">
+    <input type="hidden" name="fields[reply_to]" value="">
+    <input type="address" name="fields[botpot]" placeholder="botpot (do not fill!)" style="display:none">
+    {{ if isset .Site.Params.staticman "recaptcha" }}
+    <input type="hidden" name="options[reCaptcha][siteKey]" value="{{ .Site.Params.recaptcha.siteKey }}">
+    <input type="hidden" name="options[reCaptcha][secret]" value="{{ .Site.Params.recaptcha.secret }}">
+    {{ end }}
+
+    <fieldset>
+      <input class="post-comment-field" name="fields[name]" type="text" placeholder="{{ i18n "name_placeholder" }}">
+    </fieldset>
+
+    <fieldset>
+      <input class="post-comment-field" name="fields[email]" type="email" placeholder="{{ i18n "email_placeholder" }}">
+    </fieldset>
+
+    <fieldset>
+      <textarea class="post-comment-field" name="fields[body]" placeholder="{{ i18n "comment_placeholder" }}" rows="10"></textarea>
+    </fieldset>
+
+    {{ if .Site.Params.staticman.notifications }}
+    <fieldset>
+      <div>
+        <input class="post-comment-field checkbox-label" type="checkbox" name="options[subscribe]" value="email">
+        {{ i18n "subscribe_to_new_comments" }}
+      </div>
+    </fieldset>
+    {{ end }}
+
+    <fieldset>
+      {{ if isset .Site.Params.staticman "recaptcha" }}
+      <div class="g-recaptcha" data-sitekey="{{ .Site.Params.recaptcha.siteKey }}" data-callback="enableBtn"></div>
+      {{ end }}
+      <input type="submit" class="post-comment-field btn btn-primary" value="Submit">
+    </fieldset>
+
+  </form>
+</div>
+
+{{ if isset .Site.Params.staticman "recaptcha" }}
+<script async src='https://www.google.com/recaptcha/api.js' ></script>
+
+<script type="text/javascript">
+  document.getElementById("submit-button").disabled = true;
+</script>
+
+<script type="text/javascript">
+  function enableBtn(){
+    document.getElementById("submit-button").disabled = false;
+  }
+</script>
+{{ end }}
