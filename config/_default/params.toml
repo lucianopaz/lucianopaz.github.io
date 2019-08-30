@@ -107,7 +107,7 @@ zoom = 15
 # Load CSS and JS plugins
 #   E.g. To load `/assets/css/custom.css`, set `plugins_css = ["custom"]`.
 #   E.g. To load `/assets/js/custom.js`, set `plugins_js = ["custom"]`.
-plugins_css = ["custom"]
+plugins_css = ["custom", "reply_to_toggle"]
 plugins_js  = []
 
 ############################
@@ -169,7 +169,7 @@ sharing = true
 
   # Enable Staticman commenting by uncommenting and entering the relevant values. Be sure to comment out the disqusShortname if using Staticman.
   [comments.staticman]
-    endpoint = "https://api.staticman.net/v2/entry"
+    endpoint = "https://dev.staticman.net/v3/entry/github"
     username = "lucianopaz"
     repository = "lucianopaz.github.io"
     branch = "master"

@@ -1,0 +1,11 @@
+.reply-to-toggler,
+.reply-to-show {
+  display: none;
+}
+
+.reply-to-toggler[type="checkbox"]:checked + .reply-to-show {
+  display: block;
+}
+.reply-to-toggler[type="checkbox"]:checked + .reply-to-show + .reply-to-hide {
+  display: none;
+}

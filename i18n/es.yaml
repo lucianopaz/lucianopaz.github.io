@@ -144,7 +144,7 @@
   translation: Sé el primero en comentar.
 
 - id: leave_comment
-  translation: Di algo
+  translation: Decí algo
 
 - id: email_used_for
   translation: Tu email es usado para conseguir tu imagen de
@@ -162,10 +162,10 @@
   translation: Dirección email (nadie más podrá verla) *
 
 - id: comment_placeholder
-  translation: Comentario (markdown es aceptable) *
+  translation: Comentario (se acepta markdown) *
 
 - id: subscribe_to_new_comments
-  translation: Notificarme sobre nuevos comentarios a este artículo
+  translation: Mandame un email cuando alguien más comente este artículo.
 
 - id: submit_comment
   translation: Enviar
@@ -173,14 +173,38 @@
 - id: thanks
   translation: Gracias
 
+  id: oops
+  translation: UPS!
+
 - id: comment_submission_confirmation
   translation: Tu comentario fue enviado y será publicado una vez que haya sido aprovado.
+
+  id: comment_submission_confirmation_pr
+  translation: Hacé click acá para ver el pull request que generaste
+  
+  id: comment_submission_failure
+  translation: Tu comentario no pudo enviarse. Por favor, probá de nuevo. Gracias!
+  
+  id: comment_submission_failure_persistance
+  translation: Si el problema persiste, por favor notificame abriendo un issue
+  
+  id: comment_submission_failure_open_issue
+  translation: haciendo click aquí
 
 - id: click_here
   translation: Haga click aquí
 
-- id: see_comment_pullrequest
-  translation: vea el pull request que generó.
-
 - id: ok
   translation: OK
+
+- id: reply_to
+  translation: Responderle a
+
+- id: in_reply_to
+  translation: En respuesta a
+  
+- id: reply_to_thread
+  translation: Responder al hilo de comentarios
+
+- id: cancel
+  translation: Cancelar

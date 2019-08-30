@@ -1,0 +1,53 @@
+<div class="comment-reply-to-container">
+  <div class="row">
+    <input class="reply-to-toggler" type="checkbox" id="reply_to_{{ .reply_to }}" name="Reply"/>
+    <div class="reply-to-show">
+      {{ i18n "email_used_for" }} <a href="https://gravatar.com" target="_blank">{{ i18n "gravatar" }}</a> {{ i18n "email_used_for_reason" }}
+      <form class="post-new-comment" method="POST" action="https://dev.staticman.net/v3/entry/github/{{ .context.Site.Params.staticman.username }}/{{ .context.Site.Params.staticman.repository }}/{{ .context.Site.Params.staticman.branch }}/comments">
+        <input type="hidden" name="options[redirect]" value="{{ .context.Permalink }}#comment-submitted">
+        <input type="hidden" name="options[redirectError]" value="{{ .context.Permalink }}#comment-error">
+        <input type="hidden" name="options[slug]" value="{{ .context.File.ContentBaseName  }}">
+        <input type="hidden" name="options[section]" value="{{ .context.Section }}">
+        <input type="hidden" name="options[origin]" value="{{ .context.Permalink }}">
+        <input type="hidden" name="options[parent]" value="{{ .context.File.ContentBaseName }}">
+        <input type="hidden" name="fields[reply_to]" value="{{ .reply_to }}">
+        <input type="address" name="fields[botpot]" placeholder="botpot (do not fill!)" style="display:none">
+        {{ if isset .context.Site.Params.staticman "recaptcha" }}
+        <input type="hidden" name="options[reCaptcha][siteKey]" value="{{ .context.Site.Params.recaptcha.siteKey }}">
+        <input type="hidden" name="options[reCaptcha][secret]" value="{{ .context.Site.Params.recaptcha.secret }}">
+        {{ end }}
+
+        <fieldset>
+          <input class="post-comment-field" name="fields[name]" type="text" placeholder="{{ i18n "name_placeholder" }}">
+        </fieldset>
+
+        <fieldset>
+          <input class="post-comment-field" name="fields[email]" type="email" placeholder="{{ i18n "email_placeholder" }}">
+        </fieldset>
+
+        <fieldset>
+          <textarea class="post-comment-field" name="fields[body]" placeholder="{{ i18n "comment_placeholder" }}" rows="10"></textarea>
+        </fieldset>
+
+        <fieldset>
+          {{ if isset .context.Site.Params.staticman "recaptcha" }}
+          <div class="g-recaptcha" data-sitekey="{{ .context.Site.Params.recaptcha.siteKey }}" data-callback="enableBtn"></div>
+          {{ end }}
+          <input type="submit" class="post-comment-field btn btn-primary" value="Submit">
+          <label class="post-comment-field btn btn-primary" for="reply_to_{{ .reply_to }}">
+            {{ i18n "cancel" }}
+          </label>
+        </fieldset>
+      </form>
+    </div>
+    <div style="clear: both;"></div>
+    <label class="btn btn-primary reply-to-hide" for="reply_to_{{ .reply_to }}">
+      {{ if eq .hasReplies 0 }}
+        {{ i18n "reply_to" }} {{ .reply_to_name }}
+      {{ else }}
+        {{ i18n "reply_to_thread" }}
+      {{ end }}
+    </label>
+    <div style="clear: both;"></div>
+  </div>
+</div>

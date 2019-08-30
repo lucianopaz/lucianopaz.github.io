@@ -1,0 +1,72 @@
+{{ if isset $.Site.Data.comments .Section }}
+  <section class="staticman-comments post-comments">
+    {{ if .Slug }}
+      {{ $.Scratch.Set "postSlug" .Slug }}
+    {{ else if ne .File.BaseFileName "index" }}
+      {{ $.Scratch.Set "postSlug" .File.BaseFileName }}
+    {{ else }}
+      {{ $.Scratch.Set "postSlug" .File.ContentBaseName }}
+    {{ end }}
+    
+    {{ $comments := index $.Site.Data.comments (.Section) ($.Scratch.Get "postSlug") }}
+    
+    <h3>{{ i18n "comment_count_plural" }}</h3>
+    {{ $hasComments := 0 }}
+
+    {{ range $comments }}
+      {{ $hasComments = add $hasComments 1 }}
+      {{ if not .reply_to }}
+        {{ $parentId := ._id }}
+        {{ $parentName := .name }}
+        {{ $hasReplies := 0 }}
+        <div class="comment-header">
+          <img class="post-comment-avatar" src="https://www.gravatar.com/avatar/{{ .email }}?s=70&r=pg&d=identicon">
+          <p class="comment-info">
+            <strong>{{ .name }}</strong><br><small>{{ dateFormat "Monday, Jan 2, 2006 at 15:04 MST" .date }}</small>
+          </p>
+        </div>
+
+        {{ range $comments }}
+          {{ if eq .reply_to $parentId }}
+            {{ $hasReplies = add $hasReplies 1 }}
+          {{ end }}
+        {{ end }}
+
+        <div id="{{ ._id }}" class="comment-thread">
+          <blockquote class="comment">
+            {{ .body | markdownify }}
+          </blockquote>
+
+          <div style="clear: both;"></div>
+
+          {{ range $comments }}
+            {{ if eq .reply_to $parentId }}
+              <div class="comment-reply">
+                <div class="comment-header">
+                  <figure class="frame comment-avatar">
+                    <img class="comment-avatar" src="https://www.gravatar.com/avatar/{{ .email }}?s=70">
+                  </figure>
+                  <p class="comment-info"><strong>{{ .name }}</strong><br><i><small>{{ i18n "in_reply_to" }} {{ $parentName }}</i><br>{{ dateFormat "Monday, Jan 2, 2006" .date }}</small></p>
+                </div>
+                <blockquote class="comment">
+                  {{ .body | markdownify }}
+                </blockquote>
+              </div>
+            {{ end }}
+          {{ end }}
+          {{ partial "comments/reply_to_form.html" (dict "context" . "reply_to" $parentId "reply_to_name" .name "hasReplies" $hasReplies) }}
+
+        </div>
+
+      {{ end }}
+    {{ end }}
+    
+    {{ if eq $hasComments 0 }}
+      <p>{{ i18n "be_first_comment" }}</p>
+    {{ end }}
+    
+    {{ partial "comments/comments_form.html" . }}
+
+
+  </section>
+{{ end }}
