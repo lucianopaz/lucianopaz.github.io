@@ -1,6 +1,5 @@
 ---
 title: Hello world!
-slug: hello_world
 author: lucianopaz
 date: 2019-08-04
 caption: "Welcome to my website"
