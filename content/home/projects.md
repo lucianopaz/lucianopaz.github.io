@@ -29,12 +29,12 @@ subtitle = "The projects I am and have been involved with"
     tag = "pymc"
   
   [[content.filter_button]]
-    name = "Behavioral science"
-    tag = "behavior"
+    name = "Machine learning"
+    tag = "machine learning"
   
   [[content.filter_button]]
-    name = "Computational neuroscience"
-    tag = "neuro_comp"
+    name = "Neuroscience"
+    tag = "neuroscience"
 
 [design]
   # Choose how many columns the section has. Valid values: 1 or 2.

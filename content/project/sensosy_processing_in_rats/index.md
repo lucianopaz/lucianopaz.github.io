@@ -1,17 +1,16 @@
 ---
-title: Behavior modelling with AI
+title: Sensory processing in rats
 author: lucianopaz
 caption: ""
 image: ""
 summary: ""
 tags:
-- artificial intelligence
-- behavior
-- javascript
-- databases
+- pymc
+- machine learning
+- neuroscience
 categories:
-- behavior
-featured: false
+- neuroscience
+featured: true
 draft: false
 
 # Featured image
@@ -20,8 +19,8 @@ draft: false
 # Focal point options: Smart, Center, TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight
 image:
   placement: 1
-  caption: "Some caption"
-  focal_point: ""
+  caption: ""
+  focal_point: "Center"
   preview_only: false
 
 # Set captions for image gallery.
@@ -31,4 +30,5 @@ image:
 #  image: theme-default.png
 ---
 
-I used AI computational models to study human gameplay as part of the [Matemarote project](https://www.matemarote.edu.uy/MateMarote/). It involved reinforcement learning, and technical skills such as SQL and javascript.
+Neural population model of rat primary somatosensory cortex and how it drives the fealing of the passage of time. This is an ongoing project at the Tactile perception and learning lab at SISSA, Trieste.
+

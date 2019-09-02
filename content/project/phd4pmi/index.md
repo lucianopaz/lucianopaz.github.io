@@ -1,16 +1,15 @@
 ---
-title: PyMC4
+title: PhD4PMI
 author: lucianopaz
 caption: ""
 image: ""
 summary: ""
 tags:
-- pymc
-- ppl
-- machine learning
+- "machine learning"
+- geodata
 categories:
-- pymc
-featured: true
+- "machine learning"
+featured: false
 draft: false
 
 # Featured image
@@ -19,8 +18,8 @@ draft: false
 # Focal point options: Smart, Center, TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight
 image:
   placement: 1
-  caption: "Some caption"
-  focal_point: ""
+  caption: ""
+  focal_point: "Center"
   preview_only: false
 
 # Set captions for image gallery.
@@ -30,5 +29,4 @@ image:
 #  image: theme-default.png
 ---
 
-As part of pymc-devs, I work on the development of [PyMC4](https://github.com/pymc-devs/pymc4), a python package for probabilistic programming that works with Tensorflow probability.
-
+A machine learning tool to analyze and visualize geolocation data. It was part of the PHD4PMI initiative. Me and [Natalia Grion](https://www.linkedin.com/in/nataliagrion-phd/), worked on this project for [Innova SPA](https://www.innovatrieste.it/home.htm).
