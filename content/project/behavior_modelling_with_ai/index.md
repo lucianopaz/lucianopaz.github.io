@@ -1,16 +1,18 @@
 ---
-title: PyMC4
+title: Behavior modelling with AI
 author: lucianopaz
 caption: ""
 image: ""
 summary: ""
 tags:
-- pymc
-- ppl
-- machine learning
+- artificial intelligence
+- behavior
+- javascript
+- databases
+- neuroscience
 categories:
-- pymc
-featured: true
+- neuroscience
+featured: false
 draft: false
 
 # Featured image
@@ -30,5 +32,4 @@ image:
 #  image: theme-default.png
 ---
 
-As part of pymc-devs, I work on the development of [PyMC4](https://github.com/pymc-devs/pymc4), a python package for probabilistic programming that works with Tensorflow probability.
-
+I used AI computational models to study human gameplay as part of the [Matemarote project](https://www.matemarote.edu.uy/MateMarote/). It involved reinforcement learning, and technical skills such as SQL and javascript.

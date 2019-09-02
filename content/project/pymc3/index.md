@@ -7,6 +7,7 @@ summary: ""
 tags:
 - pymc
 - ppl
+- machine learning
 categories:
 - pymc
 featured: true
