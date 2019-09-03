@@ -13,3 +13,6 @@ $RECYCLE.BIN/
 
 # jupyter notebook
 .ipynb_checkpoints
+
+# vim editor
+.swp
