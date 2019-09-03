@@ -1,0 +1,812 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>python | Luciano Paz</title>
+    <link>https://lucianopaz.github.io/tags/python/</link>
+      <atom:link href="https://lucianopaz.github.io/tags/python/index.xml" rel="self" type="application/rss+xml" />
+    <description>python</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>MIT</copyright><lastBuildDate>Mon, 19 Aug 2019 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://lucianopaz.github.io/img/icon-192.png</url>
+      <title>python</title>
+      <link>https://lucianopaz.github.io/tags/python/</link>
+    </image>
+    
+    <item>
+      <title>PyMC3 shape handling</title>
+      <link>https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/</link>
+      <pubDate>Mon, 19 Aug 2019 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/</guid>
+      <description>
+
+&lt;p&gt;This post is intended to explain:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;What the &lt;code&gt;shape&lt;/code&gt; attribute of a pymc3 RV is.&lt;/li&gt;
+&lt;li&gt;What&amp;rsquo;s the difference between an RV&amp;rsquo;s and its associated distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;How does a distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; determine the &lt;code&gt;shape&lt;/code&gt; of its &lt;code&gt;logp&lt;/code&gt; output.&lt;/li&gt;
+&lt;li&gt;The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions.&lt;/li&gt;
+&lt;li&gt;The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes.&lt;/li&gt;
+&lt;li&gt;Some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them). &lt;em&gt;In a separate blog post!&lt;/em&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&#34;the-origin-of-all-evil-ambiguity&#34;&gt;The origin of all &lt;del&gt;evil&lt;/del&gt; ambiguity&lt;/h2&gt;
+
+&lt;p&gt;Before going into the depths of PyMC3, we&amp;rsquo;ll take a detour around &lt;code&gt;numpy&lt;/code&gt;&amp;rsquo;s random number generators to introduce the many semantically relevant shapes involved with random variables, samples drawn from probability distributions and how these affect the computed probability densities.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;numpy&lt;/code&gt; has no concept of a random variable class, it provides some random number generators from which you can draw some samples that follow a particular probability distribution (I&amp;rsquo;m purposely not mentioning &lt;code&gt;scipy.stats&lt;/code&gt; here). Lets draw some numbers using &lt;code&gt;numpy.random.normal&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;import numpy as np
+
+np.random.seed(12345)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Lets make a call using all the defaults
+x = np.random.normal()
+print(&amp;quot;Sample&#39;s value = {}\nSample&#39;s shape = {}&amp;quot;.format(x, np.array(x).shape))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Sample&#39;s value = -0.20470765948471295
+Sample&#39;s shape = ()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can see that if we call the random number generator with empty arguments we get a single number, or more technically a scalar. We actually have to make a zero-sized array by wrapping the result in &lt;code&gt;np.array(x)&lt;/code&gt; to be able to get a &lt;code&gt;shape&lt;/code&gt; attribute out of it.&lt;/p&gt;
+
+&lt;p&gt;Supplying the &lt;code&gt;size&lt;/code&gt; argument we can control the number of draws we want to get. Well, we actually control the &lt;code&gt;shape&lt;/code&gt; of the output array.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Lets make a call asking for a particular size
+x = np.random.normal(size=10)
+print(&amp;quot;Sample&#39;s value = {}\nSample&#39;s shape = {}&amp;quot;.format(x, x.shape))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Sample&#39;s value = [ 0.47894334 -0.51943872 -0.5557303   1.96578057  1.39340583  0.09290788
+  0.28174615  0.76902257  1.24643474  1.00718936]
+Sample&#39;s shape = (10,)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Lets make a call asking for a tuple size
+x = np.random.normal(size=(10, 4, 2))
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(10, 4, 2)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Ok, so we control the number of draws we want to make using the &lt;code&gt;size&lt;/code&gt; argument. The result of a call to the random number generator can return an &lt;code&gt;ndarray&lt;/code&gt; or a scalar. &lt;strong&gt;But what happens if we change the distribution parameters, &lt;code&gt;loc&lt;/code&gt; and &lt;code&gt;scale&lt;/code&gt;?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Lets make a call supplying an array of locs
+x = np.random.normal(loc=np.arange(10))
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(10,)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We now also get an &lt;code&gt;ndarray&lt;/code&gt; instead of a scalar! We get as many numbers as elements in the supplied &lt;code&gt;loc&lt;/code&gt; distribution parameter. &lt;strong&gt;So what does &lt;code&gt;size&lt;/code&gt; do now?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Lets make a call supplying an array of locs and asking for a given size
+x = np.random.normal(loc=np.arange(10), size=10)
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(10,)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Wait, so what did &lt;code&gt;size&lt;/code&gt; do here? &lt;strong&gt;The answer is essentially nothing!&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h4 id=&#34;distribution-s-shape&#34;&gt;Distribution&amp;rsquo;s shape&lt;/h4&gt;
+
+&lt;p&gt;What is actually happening is that the distribution parameters, like &lt;code&gt;loc&lt;/code&gt; and &lt;code&gt;scale&lt;/code&gt; of a &lt;code&gt;normal&lt;/code&gt;, implicitly define what we could call the &lt;strong&gt;distribution&amp;rsquo;s shape&lt;/strong&gt; (when we get to multivariate distributions we will split this into &lt;code&gt;batch_shape&lt;/code&gt; and &lt;code&gt;event_shape&lt;/code&gt;s as in tensorflow probability, but for now lets stick to &lt;code&gt;distribution_shape&lt;/code&gt;). The random number generator draws samples using the distribution&amp;rsquo;s implicit shape, but also vectorizes the random calls over the extra dimensions provided in &lt;code&gt;size&lt;/code&gt;. If the distribution cannot &lt;em&gt;broadcast&lt;/em&gt; with the supplied &lt;code&gt;size&lt;/code&gt;, then an error is raised (it&amp;rsquo;s actually more pedantic than simple broadcasting).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# size and loc broadcast so the random draws are vectorized over the extra dimensions of size
+x = np.random.normal(loc=np.arange(10), size=(300, 10))
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(300, 10)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Each column has a different loc
+np.mean(x, axis=0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;array([0.01963069, 0.95968487, 2.02679069, 2.99794185, 4.00357886,
+       4.98255339, 6.08488072, 6.895649  , 8.07455776, 9.02202938])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# size does not broadcast with loc, and an error is raised
+x = np.random.normal(loc=np.arange(10), size=3)
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&amp;lt;ipython-input-9-6ec74377ffcd&amp;gt; in &amp;lt;module&amp;gt;()
+      1 # size does not broadcast with loc, and an error is raised
+----&amp;gt; 2 x = np.random.normal(loc=np.arange(10), size=3)
+      3 x.shape
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: shape mismatch: objects cannot be broadcast to a single shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# size and loc broadcast so the random draws are vectorized over the extra dimensions of size
+x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(10, 300))
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(10, 300)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Each row has a different loc
+np.mean(x, axis=1)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;array([0.02937006, 0.98651717, 1.9862869 , 3.00312987, 4.017759  ,
+       4.92210904, 6.01890166, 7.0359308 , 7.98685293, 8.88494283])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# size and loc broadcast but the non singleton dimensions in loc do not match
+# with the correspoding size element so an error is raised
+x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(1, 300))
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&amp;lt;ipython-input-12-1b49ca5414a0&amp;gt; in &amp;lt;module&amp;gt;()
+      1 # size and loc broadcast but the non singleton dimensions in loc do not match
+      2 # with the correspoding size element so an error is raised
+----&amp;gt; 3 x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(1, 300))
+      4 x.shape
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: size is not compatible with inputs
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# The distribution&#39;s implictly defined shape depends on how the parameters
+# loc and scale broadcast with each other
+x = np.random.normal(
+    loc=np.arange(3).reshape((3, 1)),
+    scale=np.arange(4) + 1,
+    size=(3000, 3, 4)
+)
+x.shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;(3000, 3, 4)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# The second axis has different means and the last axis has different standard deviations
+np.mean(x, axis=0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;array([[ 0.0102261 , -0.00975594, -0.0082977 ,  0.11634068],
+       [ 0.9840894 ,  0.94276502,  0.93028859,  0.968283  ],
+       [ 2.00062043,  1.99421095,  2.11480227,  1.83806223]])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;np.std(x, axis=0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;array([[0.98598852, 2.02771629, 2.98777904, 3.94358108],
+       [1.01194307, 2.00820371, 3.0372083 , 3.94933656],
+       [1.00660898, 2.02210172, 3.06703822, 3.98733117]])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&#34;pointers-that-we-need-to-understand-so-far&#34;&gt;Pointers that we need to understand so far:&lt;/h4&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Distributions have parameters. These parameters can implicitly determine the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Samples drawn from a distribution are &lt;code&gt;ndarray&lt;/code&gt;s that have some &lt;code&gt;shape&lt;/code&gt; which is controlled with the &lt;code&gt;size&lt;/code&gt; of the draw and the distribution&amp;rsquo;s implicit &lt;code&gt;shape&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Any operation that is performed on a sample drawn from a probability distribution does not actually interact with the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;, but with something that is determined by &lt;code&gt;size&lt;/code&gt; along with the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;The word &lt;code&gt;shape&lt;/code&gt; is shamelessly used all over the place!&lt;/strong&gt; This is maybe the prime source of confusion in all things &lt;code&gt;shape&lt;/code&gt; related.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;h3 id=&#34;multivariate-distributions&#34;&gt;Multivariate distributions&lt;/h3&gt;
+
+&lt;p&gt;Up until now we only dealt with the normal distribution&amp;rsquo;s random number generator. This is a &lt;strong&gt;scalar&lt;/strong&gt; distribution. What this means is that a single sample drawn from a scalar distribution is also a scalar. On the other hand, &lt;strong&gt;multivariate&lt;/strong&gt; distributions, such as the &lt;a href=&#34;https://en.wikipedia.org/wiki/Multinomial_distribution&#34; target=&#34;_blank&#34;&gt;Multinomial&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Multivariate_normal_distribution&#34; target=&#34;_blank&#34;&gt;Multivariate Normal&lt;/a&gt; and &lt;a href=&#34;https://en.wikipedia.org/wiki/Wishart_distribution&#34; target=&#34;_blank&#34;&gt;Wishart&lt;/a&gt;, amongst others, yield vectors or higher ranked tensors as their single samples. To make this more precise, we will to refer to a single sample yielded by a single distribution as an &lt;strong&gt;event&lt;/strong&gt;, and its shape will be called the &lt;strong&gt;&lt;code&gt;event_shape&lt;/code&gt;&lt;/strong&gt; (we call them events because we follow &lt;a href=&#34;https://colab.research.google.com/github/tensorflow/probability/blob/master/tensorflow_probability/examples/jupyter_notebooks/Understanding_TensorFlow_Distributions_Shapes.ipynb&#34; target=&#34;_blank&#34;&gt;tensorflow probability&amp;rsquo;s naming convention&lt;/a&gt; for shapes).&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Scalar distributions have an &lt;code&gt;event_shape == ()&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Multivariate distributions have non empty &lt;code&gt;event_shape&lt;/code&gt;s.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;But what happened when we passed a &lt;code&gt;loc&lt;/code&gt; vector to the normal distribution?&lt;/strong&gt; Did we somehow make a multivariate distribution implicitly? The answer is &lt;strong&gt;no&lt;/strong&gt;, we did not make a multivariate distribution, we made a &lt;strong&gt;batch of many scalar distribution&lt;/strong&gt;. If you&amp;rsquo;re confused, don&amp;rsquo;t worry. The difference between a batch and a multivariate distribution is not clear by just looking at the shapes of samples drawn from them. For example, if we have a batch of two scalar normal distributions, and compare it to a bivariate normal distribution, both have the &lt;strong&gt;same distribution shape, &lt;code&gt;(2,)&lt;/code&gt;&lt;/strong&gt;. The difference will only become clear when we look at how the distribution&amp;rsquo;s &lt;code&gt;logp&lt;/code&gt; is computed. To do this, we&amp;rsquo;ll rely on &lt;code&gt;scipy.stats&lt;/code&gt; which provides a uniform API for many probability distributions and there &lt;code&gt;logpdf&lt;/code&gt; methods.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;from scipy import stats
+
+loc = np.arange(2)
+scale = np.ones(2)
+observed = np.arange(2)
+
+batch_logp = stats.norm.logpdf(observed, loc, scale)
+event_logp = stats.multivariate_normal.logpdf(observed, loc, scale)
+print(&amp;quot;Batch of normals logp shape    = {}&amp;quot;.format(batch_logp.shape))
+print(&amp;quot;Multivariate normal logp shape = {}&amp;quot;.format(event_logp.shape))
+print(&amp;quot;Batch of normals total logp    = {}&amp;quot;.format(np.sum(batch_logp)))
+print(&amp;quot;Multivariate normal total logp = {}&amp;quot;.format(np.sum(event_logp)))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Batch of normals logp shape    = (2,)
+Multivariate normal logp shape = ()
+Batch of normals total logp    = -1.8378770664093453
+Multivariate normal total logp = -1.8378770664093453
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The distribution&amp;rsquo;s &lt;code&gt;logp&lt;/code&gt; measures the probability density (or mass for discrete distributions) that a sample was drawn from it. For the batch of normals, each element in the batch shape corresponds to an independent observation that should be measured according to an independent distribution in the batch. For this reason, we get &lt;code&gt;(2,)&lt;/code&gt; numbers returned by the batch of gaussian distributions. On the other hand, the bivariate gaussian has &lt;code&gt;event_shape == (2,)&lt;/code&gt;. The entire axis of the &lt;code&gt;event_shape&lt;/code&gt; is consumed with the &lt;code&gt;logp&lt;/code&gt; calculation.&lt;/p&gt;
+
+&lt;p&gt;Generally, it is possible to write a batch of multivariate distributions. The resulting distribution shape is the combination of the batch and event shapes.&lt;/p&gt;
+
+&lt;h4 id=&#34;as-a-final-summary-on-the-shape-semantics&#34;&gt;As a final summary on the shape semantics:&lt;/h4&gt;
+
+&lt;ul&gt;
+&lt;li&gt;The &lt;code&gt;event_shape&lt;/code&gt; is the shape of a single draw from the unbatched distribution. For scalar distributions, this is an empty tuple &lt;code&gt;()&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;batch_shape&lt;/code&gt; describes the shape of a draw from a batch of many distributions (like what we did with the normal draws when we supplied many &lt;code&gt;loc&lt;/code&gt; and &lt;code&gt;scale&lt;/code&gt;s).&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;sample_shape&lt;/code&gt; describes the shape of the independent, identically distributed (IID) draws made from a distribution or batch of distributions.&lt;/li&gt;
+&lt;li&gt;A distribution&amp;rsquo;s shape is made up by a batch shape and an event shape: &lt;code&gt;distribution_shape == batch_shape + event_shape&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;When you draw random samples from a distribution, the resulting array has the following shape: &lt;code&gt;sample_shape + batch_shape + event_shape&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;When you compute the &lt;code&gt;logp&lt;/code&gt; of an observed sample, the event part of the shape is consumed and the output&amp;rsquo;s shape will be &lt;code&gt;sample_shape + batch_shape&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The three shape related concepts are a bit complicated to grasp so I recommend that you read &lt;a href=&#34;https://ericmjl.github.io/blog/2019/5/29/reasoning-about-shapes-and-probability-distributions/&#34; target=&#34;_blank&#34;&gt;Eric Ma&amp;rsquo;s very nice explanation on them&lt;/a&gt; or just look at &lt;a href=&#34;https://colab.research.google.com/github/tensorflow/probability/blob/master/tensorflow_probability/examples/jupyter_notebooks/Understanding_TensorFlow_Distributions_Shapes.ipynb&#34; target=&#34;_blank&#34;&gt;TFP&amp;rsquo;s colab on them&lt;/a&gt;.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;shapes-in-pymc3&#34;&gt;Shapes in PyMC3&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&#34;https://docs.pymc.io/&#34; target=&#34;_blank&#34;&gt;PyMC3&lt;/a&gt; is intended to be a user friendly modeling package in python. It aims to make probabilistic programming easy by providing an intuitive syntax to describe data generative processes and out-of-the-box Markov Chain Monte Carlo (MCMC) methods to make inferences from observed data. &lt;strong&gt;It is designed with inference in mind.&lt;/strong&gt; It uses &lt;code&gt;theano&lt;/code&gt; as its computational backend to be able to express mathematical operations on random variables symbolically. pymc3&amp;rsquo;s design has lead to a lot of ambiguity on the what &lt;code&gt;shape&lt;/code&gt; actually means, and how it affects sampling under different circumstances. The main reasons for the &lt;code&gt;shape&lt;/code&gt; ambiguity in pymc3 are:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;The three shape concepts (sample, batch and event shapes) are never explicitly disambiguated in the &lt;code&gt;Distribution&lt;/code&gt; nor in the &lt;code&gt;RV&lt;/code&gt; classes.&lt;/li&gt;
+&lt;li&gt;There is no distinction between batch and event shapes, users can only set the distribution&amp;rsquo;s shape, which is an implicit combination of both.&lt;/li&gt;
+&lt;li&gt;We deal with &lt;code&gt;theano.tensor&lt;/code&gt; that represent mathematical operations over random variates. These operations hide most of the semantical batch and event shapes under a single distribution shape in the best case, and as a symbolic shape that is unknown until run time in the worst case.&lt;/li&gt;
+&lt;li&gt;The mathematical operations may work well for the model definition when one only needs to &lt;code&gt;pm.sample&lt;/code&gt;, but might run into shape problems when running &lt;code&gt;pm.sample_prior_predictive&lt;/code&gt; and &lt;code&gt;pm.sample_posterior_predictive&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Model &lt;code&gt;logp&lt;/code&gt; reduces the random variable&amp;rsquo;s &lt;code&gt;logp&lt;/code&gt; outputs using &lt;code&gt;theano.tensor.sum&lt;/code&gt; so the sample-batch shape information is lost for sampling.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;shape&lt;/code&gt; of &lt;code&gt;ObservedRV&lt;/code&gt;s is partly set by the &lt;code&gt;observed&lt;/code&gt; argument, but this is not equivalent to the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;, leading to an ambiguous and confusing situation for users when they define their models, and potential errors when using &lt;code&gt;sample_prior_predictive&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;The distribution&amp;rsquo;s batch and event shape is not inferred from the supplied parameters, one must always specify the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; during model construction.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&#34;random-variable-s-shapes-and-problems-with-sampling&#34;&gt;Random variable&amp;rsquo;s shapes and problems with sampling&lt;/h3&gt;
+
+&lt;p&gt;To highlight some of these complications, we have to look at data generative models. Random variables are used to define data generation processes like the following:&lt;/p&gt;
+
+&lt;p&gt;$$
+\beta_{G} \sim \mathcal{N}(0, 1)\\&lt;br /&gt;
+\gamma \sim \mathcal{\Gamma}(10, 10)\\&lt;br /&gt;
+z_{i} \sim \mathcal{N}(0, 1)\\&lt;br /&gt;
+\beta_{i} = \beta_{G} + \gamma z_{i}\\&lt;br /&gt;
+\sigma \sim \mathcal{\Gamma}(3, 3)\\&lt;br /&gt;
+y \sim \mathcal{N}\left(\vec{X}. \vec{\beta}, \sigma\right)
+$$&lt;/p&gt;
+
+&lt;p&gt;This is a simple hierarchical model usually used for linear regressions with partial pooling. The key pieces of information for end users are: $y$ and $\vec{X}$. These are the actually observed values. $y$ represents an observed output of the assumed data generation process, and $\vec{X}$ would be the corresponding input. We assume $\vec{X}$ is a vector because it can have more than one feature that is used to generate the output observation. In general, we have more than a single observation, in thoses cases $\vec{y}$ is a vector (or 1D array) and $\mathbb{X}$ is a matrix (or 2D array, made from vertically stacking many $\vec{X}$).&lt;/p&gt;
+
+&lt;p&gt;The rest of the parameters define the unobserved random variables that we will try to infer given the set of observations. $\sigma$ is the observation noise. $\vec{\beta}$ are the regression weights, and they are a summation of two other sets of random variables: $\beta_{G}$, $\gamma$ and $\vec{z}$.&lt;/p&gt;
+
+&lt;p&gt;When we do MCMC, we propose candidate values for the random variables based on the model&amp;rsquo;s &lt;code&gt;logp&lt;/code&gt;. We use &lt;code&gt;theano&lt;/code&gt; and our RVs are essentially placeholders or &lt;code&gt;Variables&lt;/code&gt; whose values are unknown when the model is defined, but are updated during sampling. &lt;strong&gt;The only thing that is fixed during the model&amp;rsquo;s construction is what we will call the distribution&amp;rsquo;s core dimensions, &lt;code&gt;ndim&lt;/code&gt;&lt;/strong&gt;, which is a fancy way of calling the axes defined by &lt;code&gt;batch_shape&lt;/code&gt; and &lt;code&gt;event_shape&lt;/code&gt;. MCMC sampling in pymc3 operates on single samples from distributions and only the &lt;code&gt;logp&lt;/code&gt; shape handling of &lt;code&gt;ObservedRV&lt;/code&gt;s can bring shape related trouble (like what happened in &lt;a href=&#34;https://github.com/pymc-devs/pymc3/issues/3535&#34; target=&#34;_blank&#34;&gt;this issue&lt;/a&gt; with &lt;code&gt;Categorical.logp&lt;/code&gt;).&lt;/p&gt;
+
+&lt;p&gt;On the other hand, when we do forward sampling (i.e. &lt;code&gt;sample_prior_predictive&lt;/code&gt; and &lt;code&gt;sample_posterior_predictive&lt;/code&gt;) the same data generation model that was defined only taking into account the core dimensions, has to be used with the extra dimensions given by &lt;code&gt;sample_shape&lt;/code&gt;. This leads to a whole world of pain which we will illustrate now using only &lt;code&gt;numpy&lt;/code&gt; to write the data generation model:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# This implementation uses the argument size incorrectly
+def unvectorized_prior_sampler(X=np.arange(3), size=None):
+    normal = np.random.normal
+    beta_g = normal(0, 1, size=size)
+    gamma = np.random.gamma(10, 10, size=size)
+    z = normal(np.zeros(X.shape[-1]), 1, size=size)
+    beta = beta_g + gamma * z
+    sigma = np.random.gamma(3, 3, size=size)
+    return normal(np.dot(X, beta), sigma, size=size)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So lets try out our nice little &lt;code&gt;unvectorized_prior_sampler&lt;/code&gt; using only the default &lt;code&gt;size=None&lt;/code&gt;. This means that&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;We will be drawing a single sample from each distribution&lt;/li&gt;
+&lt;li&gt;Said sample will have the distribution&amp;rsquo;s implicit &lt;code&gt;shape&lt;/code&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;All mathematical operations will be performed on the resulting &lt;code&gt;float&lt;/code&gt;s or &lt;code&gt;ndarray&lt;/code&gt;s that are returned as the distributions samples.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;from matplotlib import pyplot as plt
+import seaborn as sns
+plt.ion()
+
+sns.distplot([unvectorized_prior_sampler() for _ in range(5000)]);
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&#34;index_files/index_33_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Nice! Everything works! Now lets try to do the same but taking advantage of &lt;code&gt;size&lt;/code&gt; to draw multiple values at once and vectorize operations&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;unvectorized_prior_sampler(size=5000)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&amp;lt;ipython-input-20-30082f0e1390&amp;gt; in &amp;lt;module&amp;gt;()
+----&amp;gt; 1 unvectorized_prior_sampler(size=5000)
+
+
+&amp;lt;ipython-input-17-2bc805c3fbae&amp;gt; in unvectorized_prior_sampler(X, size)
+      4     beta_g = normal(0, 1, size=size)
+      5     gamma = np.random.gamma(10, 10, size=size)
+----&amp;gt; 6     z = normal(np.zeros(X.shape[-1]), 1, size=size)
+      7     beta = beta_g + gamma * z
+      8     sigma = np.random.gamma(3, 3, size=size)
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: shape mismatch: objects cannot be broadcast to a single shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Oh no! &lt;strong&gt;We can&amp;rsquo;t use the same &lt;code&gt;size&lt;/code&gt; argument for drawing from every distribution, because it doesn&amp;rsquo;t broadcast well with the implicit distribution&amp;rsquo;s shape&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;What we want to do is set the &lt;code&gt;sample_shape&lt;/code&gt; instead, which is agnostic of each distribution&amp;rsquo;s shape, so will try to work around the &lt;code&gt;distribution_shape&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# This implementation uses the argument sample_shape incorrectly
+def incorrect_vectorized_prior_sampler(X=np.arange(3), sample_shape=None):
+    normal = np.random.normal
+    if sample_shape is None:
+        sample_shape = ()
+    try:
+        sample_shape = tuple(sample_shape)
+    except TypeError:
+        sample_shape = (sample_shape,)
+    beta_g = normal(0, 1, size=sample_shape)
+    gamma = np.random.gamma(10, 10, size=sample_shape)
+    # We add the distribution&#39;s shape at the end of sample_shape
+    z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+    beta = beta_g + gamma * z
+    sigma = np.random.gamma(3, 3, size=sample_shape)
+    return normal(np.dot(X, beta), sigma, size=sample_shape)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;incorrect_vectorized_prior_sampler(sample_shape=5000)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&amp;lt;ipython-input-22-235899f566bb&amp;gt; in &amp;lt;module&amp;gt;()
+----&amp;gt; 1 incorrect_vectorized_prior_sampler(sample_shape=5000)
+
+
+&amp;lt;ipython-input-21-f4692868adc5&amp;gt; in incorrect_vectorized_prior_sampler(X, sample_shape)
+     12     # We add the distribution&#39;s shape at the end of sample_shape
+     13     z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+---&amp;gt; 14     beta = beta_g + gamma * z
+     15     sigma = np.random.gamma(3, 3, size=sample_shape)
+     16     return normal(np.dot(X, beta), sigma, size=sample_shape)
+
+
+ValueError: operands could not be broadcast together with shapes (5000,) (5000,3) 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Still not working! Lets zoom-in to what is causing the error. We see that we are summing &lt;code&gt;beta_g&lt;/code&gt;&amp;rsquo;s samples with the product of &lt;code&gt;gamma&lt;/code&gt; and &lt;code&gt;z&lt;/code&gt;&amp;rsquo;s samples. Let&amp;rsquo;s look at the shapes of the samples:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;beta_g.shape == sample_shape&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;gamma.shape == sample_shape&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;z.shape == sample_shape + (X.shape[-1],)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So in our particular examples these are shaped as:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;beta_g.shape == (5000,)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;gamma.shape == (5000,)&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;z.shape == (5000, 3)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So it makes sense that the product of &lt;code&gt;gamma&lt;/code&gt; with &lt;code&gt;z&lt;/code&gt; does not broadcast. You could ask yourself, &lt;strong&gt;why did this work at all when we call this function with &lt;code&gt;sample_shape=None&lt;/code&gt;?&lt;/strong&gt; The answer is that a single sample from each distribution (calling with &lt;code&gt;sample_shape=()&lt;/code&gt;), has the distribution&amp;rsquo;s implicit &lt;code&gt;shape&lt;/code&gt;, and those &lt;strong&gt;DO BROADCAST CORRECTLY&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;beta_g.shape == ()&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;gamma.shape == ()&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;z.shape == (3,)&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To make our model&amp;rsquo;s data generation process fully vectorized we need two things:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;To ensure that all the mathematical operations (sums, products, dots) and all the conditional dependences between variables (like $y$ and $\vec{\beta}$) work on the distribution&amp;rsquo;s core dimensions (&lt;code&gt;batch_shape + event_shape&lt;/code&gt;). We choose this name to stick with numpy&amp;rsquo;s glossary of generalized universal functions.&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;That the mathematical operations be vectorized on the extra dimensions added by the requested &lt;code&gt;sample_shape&lt;/code&gt; (something like what is done with &lt;a href=&#34;https://docs.scipy.org/doc/numpy/reference/c-api.generalized-ufuncs.html&#34; target=&#34;_blank&#34;&gt;numpy&amp;rsquo;s generic ufuncs&lt;/a&gt;).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# Overly expressive but _almost_ fully vectorized implementation
+def vectorized_prior_sampler(X=np.arange(3), sample_shape=None):
+normal = np.random.normal
+if sample_shape is None:
+    sample_shape = ()
+try:
+    sample_shape = tuple(sample_shape)
+except TypeError:
+    sample_shape = (sample_shape,)
+beta_g = normal(0, 1, size=sample_shape)
+gamma = np.random.gamma(10, 10, size=sample_shape)
+# We add the distribution&#39;s shape at the end of sample_shape
+z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+beta = beta_g[..., None] + gamma[..., None] * z
+sigma = np.random.gamma(3, 3, size=sample_shape)
+return normal(np.einsum(&amp;quot;...i,...i&amp;quot;, X, beta), sigma, size=sample_shape)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;sns.distplot(vectorized_prior_sampler(sample_shape=5000));
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&#34;index_files/index_42_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Things can still go horribly wrong if we pass a stack of multiple &lt;code&gt;X&lt;/code&gt; vectors. This is a big deal because it happens when we set more than a single observed &lt;code&gt;X&lt;/code&gt; and &lt;code&gt;y&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+vectorized_prior_sampler(X=X, sample_shape=5000)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&amp;lt;ipython-input-25-f754aa0fb06e&amp;gt; in &amp;lt;module&amp;gt;()
+      1 X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+----&amp;gt; 2 vectorized_prior_sampler(X=X, sample_shape=5000)
+
+
+&amp;lt;ipython-input-23-5506fae2796b&amp;gt; in vectorized_prior_sampler(X, sample_shape)
+     14     beta = beta_g[..., None] + gamma[..., None] * z
+     15     sigma = np.random.gamma(3, 3, size=sample_shape)
+---&amp;gt; 16     return normal(np.einsum(&amp;quot;...i,...i&amp;quot;, X, beta), sigma, size=sample_shape)
+
+
+~/anaconda3/lib/python3.6/site-packages/numpy/core/einsumfunc.py in einsum(*operands, **kwargs)
+   1067     # If no optimization, run pure einsum
+   1068     if optimize_arg is False:
+-&amp;gt; 1069         return c_einsum(*operands, **kwargs)
+   1070 
+   1071     valid_einsum_kwargs = [&#39;out&#39;, &#39;dtype&#39;, &#39;order&#39;, &#39;casting&#39;]
+
+
+ValueError: operands could not be broadcast together with remapped shapes [original-&amp;gt;remapped]: (10,3)-&amp;gt;(10,3) (5000,3)-&amp;gt;(5000,3) 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To solve this, we need to make our &lt;code&gt;einsum&lt;/code&gt; aware of the extra observation dimensions in &lt;code&gt;X&lt;/code&gt;, and then ensure that the result broadcasts with samples taken from &lt;code&gt;sigma&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;# fully vectorized implementation
+def prior_sampler(X=np.arange(3), sample_shape=None):
+    normal = np.random.normal
+    if sample_shape is None:
+        sample_shape = ()
+    try:
+        sample_shape = tuple(sample_shape)
+    except TypeError:
+        sample_shape = (sample_shape,)
+    beta_g = normal(0, 1, size=sample_shape)
+    gamma = np.random.gamma(10, 10, size=sample_shape)
+    # We add the distribution&#39;s shape at the end of sample_shape
+    z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+    beta = beta_g[..., None] + gamma[..., None] * z
+    sigma = np.random.gamma(3, 3, size=sample_shape)
+    if X.ndim == 1:
+        signature = &amp;quot;...i,...i&amp;quot;
+    else:
+        signature = &amp;quot;...{0}i,...i-&amp;gt;...{0}&amp;quot;.format(&amp;quot;&amp;quot;.join([chr(106 + dim) for dim in range(X.ndim - 1)]))
+        sigma = np.reshape(sigma, sigma.shape + (1,) * (X.ndim - 1))
+    return normal(np.einsum(signature, X, beta), sigma, size=sample_shape + (X.shape[:-1]))
+
+X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+prior = prior_sampler(X=X, sample_shape=5000)
+
+colors = [plt.get_cmap(&amp;quot;rainbow&amp;quot;)(x) for x in np.linspace(0, 1, len(X))]
+plt_x = np.linspace(
+    np.floor(np.min(prior) / 1) * 1,
+    np.ceil(np.max(prior) / 1) * 1,
+    1000
+)
+for offset, (p, color) in enumerate(zip(prior.T, colors)):
+    plt_y = stats.gaussian_kde(p)(plt_x)
+    plt.plot(plt_x - offset * 100, plt_y + offset * 0.001, color=color)
+plt.axis(&amp;quot;off&amp;quot;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&#34;index_files/index_46_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+
+&lt;h4 id=&#34;summary&#34;&gt;Summary&lt;/h4&gt;
+
+&lt;p&gt;All of this data generation process using raw &lt;code&gt;numpy&lt;/code&gt; was intended to showcase that:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;When you write down a model and only think about the distribution&amp;rsquo;s core dimensions, this will in general make it difficult to generate data (sample the prior or posterior predictive) in a vectorized fashion.&lt;/li&gt;
+&lt;li&gt;To ensure proper vectorization, the mathematical operations that act on RVs &lt;strong&gt;must work on the core dimensions and be vectorized on the extra axes&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;The RVs that are themselves parameters of other distributions downstream will have an extra &lt;code&gt;sample_shape&lt;/code&gt; axes when generating data. This means that &lt;strong&gt;the distribution parameters must be broadcastable excluding the &lt;code&gt;sample_shape&lt;/code&gt; parts&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;pymc3 does most of this for you in &lt;code&gt;sample_prior_predictive&lt;/code&gt; and &lt;code&gt;sample_posterior_predictive&lt;/code&gt;. When we write down a model in pymc3, we can easily identify the distribution core dimensions. This allows us to vectorize the mathematical operations using &lt;code&gt;numpy.vectorize&lt;/code&gt; with an adequate signature. Furthermore, the distribution parameters are broadcasted ignoring the &lt;code&gt;sample_shape&lt;/code&gt; part thanks to the utilities defined in the &lt;a href=&#34;https://docs.pymc.io/api/shape_utils.html&#34; target=&#34;_blank&#34;&gt;&lt;code&gt;pymc3.distributions.shape_utils&lt;/code&gt; module&lt;/a&gt;. &lt;strong&gt;However, at the moment this broadcasting works for scalar distributions only, the multivariate distributions are still not fully vectorized.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3 id=&#34;pymc3-shape-model-construction&#34;&gt;PyMC3 shape model construction&lt;/h3&gt;
+
+&lt;p&gt;Before looking at the equivalent data generation model from above but written in pymc3, I&amp;rsquo;ll briefly remind you of three major things that one should always do with shapes in pymc3 models:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;When we create random variables inside a model, their &lt;code&gt;shape&lt;/code&gt; cannot be implicitly inferred from the distribution parameters. This means that if we want to have multidimensional or batches of distributions &lt;strong&gt;we need to specify the desired &lt;code&gt;shape&lt;/code&gt; during the distribution&amp;rsquo;s instantiation&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;When we create a random variable and specify the &lt;code&gt;shape&lt;/code&gt;, we are not setting the random variable&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;, &lt;strong&gt;we are setting the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; and the distribution&amp;rsquo;s core dimensions&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;When a random variable is given observations, &lt;strong&gt;the &lt;code&gt;ObservedRV&lt;/code&gt;&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;&lt;/strong&gt; (not the underlying distribution&amp;rsquo;s shape) &lt;strong&gt;is determined by the &lt;code&gt;observed&lt;/code&gt; argument.&lt;/strong&gt; At the moment, there are no checks in place between the &lt;code&gt;ObservedRV&lt;/code&gt; and the underlying distribution&amp;rsquo;s shapes, but in the near future, an error will be raised if the &lt;code&gt;ObservedRV&lt;/code&gt;&amp;rsquo;s shape is not consistent with a sample, with a given &lt;code&gt;sample_shape&lt;/code&gt;, drawn from the underlying distribution.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Handling observations is really important in pymc3, so I&amp;rsquo;ll stop here a bit because there are a lot of ambiguous things revolving around &lt;code&gt;shapes&lt;/code&gt;. Essentially &lt;code&gt;ObservedRV&lt;/code&gt;s have an &lt;code&gt;observed&lt;/code&gt; attribute that represent the data that they have observed. This data should have a &lt;code&gt;shape&lt;/code&gt; that looks like &lt;code&gt;sample_shape + distribution_shape&lt;/code&gt;. The distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; should always be provided, or it will be assumed to represent a scalar RV (&lt;code&gt;distribution_shape=()&lt;/code&gt; and hence zero core dimensions). When we draw samples from the posterior predictive distribution, we let the &lt;code&gt;ObservedRV&lt;/code&gt;s &lt;code&gt;shape&lt;/code&gt; be treated as the distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt;. When we draw samples from the prior predictive distribution, we want to ignore the &lt;code&gt;ObservedRV&lt;/code&gt;&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; and just work with the underlying distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; (this is currently not working due to an &lt;a href=&#34;https://github.com/pymc-devs/pymc3/issues/1094&#34; target=&#34;_blank&#34;&gt;old open issue&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;Now lets define our model in pymc3&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;import numpy as np
+import theano
+from theano import tensor as tt
+import pymc3 as pm
+
+
+# Model definition is encapsulated to easily use with or without observations
+def model_factory(X=np.arange(3), y=None):
+    with pm.Model() as model:
+        beta_g = pm.Normal(&amp;quot;beta_g&amp;quot;, mu=0, sigma=1)
+        gamma = pm.Gamma(&amp;quot;gamma&amp;quot;, alpha=10, beta=10)
+        z = pm.Normal(&amp;quot;z&amp;quot;, mu=0, sigma=1, shape=X.shape[1])
+        sigma = pm.Gamma(&amp;quot;sigma&amp;quot;, alpha=3, beta=3)
+        beta = beta_g + gamma * z
+        y = pm.Normal(
+            &amp;quot;y&amp;quot;,
+            mu=tt.dot(X, beta),
+            sigma=sigma,
+            shape=X.shape[:-1],
+            observed=y
+        )
+    return model
+
+# Data generation
+X = np.random.randn(400, 3)
+X[:, 0] = 1.
+with model_factory(X):
+    prior = pm.sample_prior_predictive(samples=1)
+y = prior.pop(&amp;quot;y&amp;quot;)
+true_parameters = prior
+print(true_parameters)
+
+# Inference
+with model_factory(X, y) as model:
+    trace = pm.sample()
+    pm.plot_posterior(trace)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;/home/lpaz/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+
+
+{&#39;sigma&#39;: array(0.86392362), &#39;z&#39;: array([ 0.58161754, -0.92677227,  0.60365752]), &#39;gamma&#39;: array(0.90931996), &#39;sigma_log__&#39;: -0.1462709159678767, &#39;beta_g&#39;: array(-1.14124179), &#39;gamma_log__&#39;: -0.09505825242743682}
+
+
+Auto-assigning NUTS sampler...
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [sigma, z, gamma, beta_g]
+Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000 [00:16&amp;lt;00:00, 124.98draws/s]
+The number of effective samples is smaller than 25% for some parameters.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&#34;index_files/index_50_3.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The resulting trace seems mostly fine, the posterior densities are around where they should be, and the model seems to have converged well enough (I don&amp;rsquo;t show the checks here to avoid clobbering the post). Lets just pay attention to the &lt;code&gt;shape&lt;/code&gt; parameters that I passed along in the model&amp;rsquo;s definition.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;I wrote a factory function to be able to easily create a model I&amp;rsquo;ll use without observations to use &lt;code&gt;sample_prior_predictive&lt;/code&gt; to generate a set of observations.&lt;/li&gt;
+&lt;li&gt;Then, I create a second model passing the observed data to do inference.&lt;/li&gt;
+&lt;li&gt;All the distributions that are not scalar have a specified &lt;code&gt;shape&lt;/code&gt;, including the observed &lt;code&gt;y&lt;/code&gt;. This is because, the distribution &lt;code&gt;shape&lt;/code&gt; cannot be inferred properly from the distribution parameters.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;We can view some of the &lt;strong&gt;differences between RV and distribution shapes&lt;/strong&gt; with this model:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;def rv_shape_info(model, rv):
+    try:
+        shape = &amp;quot;is a symbolic theano expression that evaluates to {}&amp;quot;.format(rv.shape.eval())
+    except:
+        shape = &amp;quot;is a symbolic theano expression, unknown until runtime&amp;quot;
+    return (
+        &amp;quot;RV name = {}.\n&amp;quot;
+        &amp;quot;Type of RV = {}.\n&amp;quot;
+        &amp;quot;RV shape {}.\n&amp;quot;
+        &amp;quot;Distribution shape = {}\n&amp;quot;
+        &amp;quot;logp shape = {}.\n&amp;quot;.
+        format(
+            rv.name,
+            type(rv),
+            shape,
+            rv.distribution.shape,
+            rv.logp_elemwise(model.test_point).shape
+        )
+    )
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;beta_g = model.beta_g
+print(rv_shape_info(model, beta_g))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;RV name = beta_g.
+Type of RV = &amp;lt;class &#39;pymc3.model.FreeRV&#39;&amp;gt;.
+RV shape is a symbolic theano expression, unknown until runtime.
+Distribution shape = []
+logp shape = ().
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;z = model.z
+print(rv_shape_info(model, z))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;RV name = z.
+Type of RV = &amp;lt;class &#39;pymc3.model.FreeRV&#39;&amp;gt;.
+RV shape is a symbolic theano expression, unknown until runtime.
+Distribution shape = [3]
+logp shape = (3,).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;y = model.y
+print(rv_shape_info(model, y))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;RV name = y.
+Type of RV = &amp;lt;class &#39;pymc3.model.ObservedRV&#39;&amp;gt;.
+RV shape is a symbolic theano expression that evaluates to [400].
+Distribution shape = [400]
+logp shape = (400,).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&#34;shape-handling-in-logp&#34;&gt;Shape handling in &lt;code&gt;logp&lt;/code&gt;&lt;/h3&gt;
+
+&lt;p&gt;You may have noticed that I printed something I called &lt;code&gt;logp shape&lt;/code&gt;. Lets look at what that is. Each &lt;code&gt;Distribution&lt;/code&gt; has a &lt;code&gt;logp&lt;/code&gt; method with the following signature:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;...
+def logp(self, value):
+    ...
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It takes an input &lt;code&gt;value&lt;/code&gt; and returns a &lt;code&gt;theano&lt;/code&gt; expression that can later be compiled to compute the logarithm of the probability density function of the distribution, conditioned on the &lt;code&gt;value&lt;/code&gt; input. When an RV is instantiated, the distribution&amp;rsquo;s &lt;code&gt;logp&lt;/code&gt; is called with one of two possible inputs:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;If no &lt;code&gt;observed&lt;/code&gt; is provided, &lt;code&gt;logp&lt;/code&gt; is called passing the RV as the &lt;code&gt;value&lt;/code&gt; argument&lt;/li&gt;
+&lt;li&gt;If &lt;code&gt;observed&lt;/code&gt; is provided, &lt;code&gt;logp&lt;/code&gt; is called passing &lt;code&gt;observed&lt;/code&gt; as the &lt;code&gt;value&lt;/code&gt; argument&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Keep in mind that this simply returns a &lt;code&gt;theano.tensor&lt;/code&gt;, called &lt;code&gt;logp_elemwiset&lt;/code&gt;, so it still has no value, and hence no shape to check. pymc3 later provides the RVs with two convenience methods to compute &lt;code&gt;logp&lt;/code&gt; numerical values by compiling the returned &lt;code&gt;theano.tensor&lt;/code&gt; into a function. The first is the widely known &lt;code&gt;rv.logp&lt;/code&gt; method, which computes the sum of the &lt;code&gt;logp_elemwiset&lt;/code&gt; on a given point input. The second, less known method, is &lt;code&gt;rv.logp_elemwise&lt;/code&gt;, which simply returns the numerical output of &lt;code&gt;logp_elemwiset&lt;/code&gt; on a given point input. &lt;strong&gt;This means that we can use &lt;code&gt;rv.logp_elemwise&lt;/code&gt; to check how a given distribution handles the logp&amp;rsquo;s output &lt;code&gt;shape&lt;/code&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;If you recall the discussion on &lt;code&gt;event_shape&lt;/code&gt; and &lt;code&gt;batch_shape&lt;/code&gt;, we can compare the &lt;code&gt;logp&lt;/code&gt;s of a batch of normals versus a multivariate normal on a given set of observations&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;def model_factory(batch_shape, event_shape, batch_obs=None, event_obs=None):
+    with pm.Model() as model:
+        batch = pm.Normal(
+            &amp;quot;batch&amp;quot;,
+            mu=0,
+            sigma=1,
+            shape=batch_shape,
+            observed=batch_obs,
+        )
+        event = pm.MvNormal(
+            &amp;quot;event&amp;quot;,
+            mu=np.zeros(event_shape),
+            cov=np.diag(np.ones(event_shape)),
+            shape=event_shape,
+            observed=event_obs,
+        )
+    return model
+
+batch_shape = (3,)
+event_shape = (3,)
+sample_shape = (4,)
+# We generate data to later be used as observations
+test_model = model_factory(batch_shape, event_shape)
+b = test_model.batch.random(size=sample_shape)
+e = test_model.event.random(size=sample_shape)
+
+# We create the model passing observations to the RVs so that we can compute logp
+test_model = model_factory(batch_shape, event_shape, batch_obs=b, event_obs=b)
+point = {&amp;quot;batch&amp;quot;: b, &amp;quot;event&amp;quot;: e}
+blp = test_model.batch.logp_elemwise(point)
+elp = test_model.event.logp_elemwise(point)
+
+print(&amp;quot;Shape of draw from a batch of normals        = {}&amp;quot;.format(b.shape))
+print(&amp;quot;Shape of draw from an MvNormal               = {}&amp;quot;.format(e.shape))
+print(&amp;quot;Shape of logp output from a batch of normals = {}&amp;quot;.format(blp.shape))
+print(&amp;quot;Shape of logp output from an MvNormal        = {}&amp;quot;.format(elp.shape))
+print(&amp;quot;Total logp output from a batch of normals    = {}&amp;quot;.format(np.sum(blp)))
+print(&amp;quot;Total logp output from an MvNormal           = {}&amp;quot;.format(np.sum(elp)))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Shape of draw from a batch of normals        = (4, 3)
+Shape of draw from an MvNormal               = (4, 3)
+Shape of logp output from a batch of normals = (4, 3)
+Shape of logp output from an MvNormal        = (4,)
+Total logp output from a batch of normals    = -22.535408832791916
+Total logp output from an MvNormal           = -22.53540883279192
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The previous example highlights the following:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;event_shape&lt;/code&gt; and &lt;code&gt;batch_shape&lt;/code&gt; are implicit to a distribution, and only accessible through a single &lt;code&gt;shape&lt;/code&gt; argument.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;logp&lt;/code&gt; computations distinguish between the &lt;code&gt;event_shape&lt;/code&gt; and &lt;code&gt;batch_shape&lt;/code&gt; of distributions, but drawing samples from distributions does not.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&#34;posterior-predictive-sampling&#34;&gt;Posterior predictive sampling&lt;/h3&gt;
+
+&lt;p&gt;We can now draw samples from the posterior predictive distribution and check the output&amp;rsquo;s shape. What we do at the moment is:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;We iterate through the points in the &lt;code&gt;trace&lt;/code&gt; one at a time. This means that the RV values provided will only have their core dimensions. This makes forward sampling safer but slower.&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;We use the &lt;code&gt;ObservedRV&lt;/code&gt;&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; as the &lt;code&gt;distribution_shape&lt;/code&gt;, so all samples should have &lt;code&gt;shape=(number_of_points_in_trace,) + observedRV.shape.eval()&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;print(&amp;quot;Total number of points in trace = {}&amp;quot;.format(len([p for p in trace.points()])))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Total number of points in trace = 1000&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;with model:
+ppc = pm.sample_posterior_predictive(trace)
+ppc[&amp;quot;y&amp;quot;].shape
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;100%|██████████| &lt;sup&gt;1000&lt;/sup&gt;&amp;frasl;&lt;sub&gt;1000&lt;/sub&gt; [00:01&amp;lt;00:00, 829.93it/s]&lt;/p&gt;
+
+&lt;p&gt;(1000, 400)&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;To better highlight the &lt;code&gt;shape&lt;/code&gt; difference in sampling from an &lt;code&gt;ObservedRV&lt;/code&gt;s prior distribution and its posterior predictive we&amp;rsquo;ll use the following model:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;with pm.Model() as model:
+    mu = pm.Normal(&amp;quot;mu&amp;quot;, 0, 1)
+    obs = pm.Normal(&amp;quot;obs&amp;quot;, mu, 1, shape=(3,), observed=np.random.randn(10, 3) + 1)
+    prior = obs.distribution.random(size=100)
+    trace = pm.sample()
+    ppc = pm.sample_posterior_predictive(trace, samples=100)
+print(&amp;quot;Shape of samples drawn from the prior distribution = {}&amp;quot;.format(prior.shape))
+print(&amp;quot;Shape of samples drawn from the posterior predictive = {}&amp;quot;.format(ppc[&amp;quot;obs&amp;quot;].shape))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Auto-assigning NUTS sampler...
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [mu]
+Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000 [00:00&amp;lt;00:00, 2665.14draws/s]
+/home/lpaz/repos/pymc3/pymc3/sampling.py:1109: UserWarning: samples parameter is smaller than nchains times ndraws, some draws and/or chains may not be represented in the returned posterior predictive sample
+  warnings.warn(&amp;quot;samples parameter is smaller than nchains times ndraws, some draws &amp;quot;
+100%|██████████| 100/100 [00:00&amp;lt;00:00, 2240.26it/s]
+
+Shape of samples drawn from the prior distribution = (100, 3)
+Shape of samples drawn from the posterior predictive = (100, 10, 3)
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
