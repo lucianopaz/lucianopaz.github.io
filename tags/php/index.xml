@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>php | Luciano Paz</title>
+    <link>https://lucianopaz.github.io/tags/php/</link>
+      <atom:link href="https://lucianopaz.github.io/tags/php/index.xml" rel="self" type="application/rss+xml" />
+    <description>php</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>MIT</copyright>
+    <image>
+      <url>https://lucianopaz.github.io/img/icon-192.png</url>
+      <title>php</title>
+      <link>https://lucianopaz.github.io/tags/php/</link>
+    </image>
+    
+    <item>
+      <title>Physics Department Joomla research component</title>
+      <link>https://lucianopaz.github.io/project/web_page_df/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/project/web_page_df/</guid>
+      <description>&lt;p&gt;I developed a joomla component for the front and backend of the &lt;a href=&#34;https://df.uba.ar/en/investigadores1/investigadores-y-becarios&#34; target=&#34;_blank&#34;&gt;research section of the physics department of the University of Buenos Aires&amp;rsquo; webpage&lt;/a&gt;. It used a combination of php, jQuery, bootstrap, and MySQL.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Other | Luciano Paz</title>
+    <link>https://lucianopaz.github.io/categories/other/</link>
+      <atom:link href="https://lucianopaz.github.io/categories/other/index.xml" rel="self" type="application/rss+xml" />
+    <description>Other</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>MIT</copyright><lastBuildDate>Sun, 04 Aug 2019 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://lucianopaz.github.io/img/icon-192.png</url>
+      <title>Other</title>
+      <link>https://lucianopaz.github.io/categories/other/</link>
+    </image>
+    
+    <item>
+      <title>Hello world!</title>
+      <link>https://lucianopaz.github.io/2019/08/04/hello-world/</link>
+      <pubDate>Sun, 04 Aug 2019 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/2019/08/04/hello-world/</guid>
+      <description>&lt;p&gt;Hi everyone, and welcome to the first post of my website! I wanted a place to write about the things I&amp;rsquo;ve worked on, the topics that I find interesting and also some thoughts, notes and code, that I hope that you may find helpful, or at least interesting.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Physics Department Joomla research component</title>
+      <link>https://lucianopaz.github.io/project/web_page_df/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/project/web_page_df/</guid>
+      <description>&lt;p&gt;I developed a joomla component for the front and backend of the &lt;a href=&#34;https://df.uba.ar/en/investigadores1/investigadores-y-becarios&#34; target=&#34;_blank&#34;&gt;research section of the physics department of the University of Buenos Aires&amp;rsquo; webpage&lt;/a&gt;. It used a combination of php, jQuery, bootstrap, and MySQL.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

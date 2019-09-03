@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>other | Luciano Paz</title>
+    <link>https://lucianopaz.github.io/tags/other/</link>
+      <atom:link href="https://lucianopaz.github.io/tags/other/index.xml" rel="self" type="application/rss+xml" />
+    <description>other</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>MIT</copyright><lastBuildDate>Sun, 04 Aug 2019 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>https://lucianopaz.github.io/img/icon-192.png</url>
+      <title>other</title>
+      <link>https://lucianopaz.github.io/tags/other/</link>
+    </image>
+    
+    <item>
+      <title>Hello world!</title>
+      <link>https://lucianopaz.github.io/2019/08/04/hello-world/</link>
+      <pubDate>Sun, 04 Aug 2019 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/2019/08/04/hello-world/</guid>
+      <description>&lt;p&gt;Hi everyone, and welcome to the first post of my website! I wanted a place to write about the things I&amp;rsquo;ve worked on, the topics that I find interesting and also some thoughts, notes and code, that I hope that you may find helpful, or at least interesting.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

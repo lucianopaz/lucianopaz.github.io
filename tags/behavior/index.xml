@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>behavior | Luciano Paz</title>
+    <link>https://lucianopaz.github.io/tags/behavior/</link>
+      <atom:link href="https://lucianopaz.github.io/tags/behavior/index.xml" rel="self" type="application/rss+xml" />
+    <description>behavior</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><copyright>MIT</copyright>
+    <image>
+      <url>https://lucianopaz.github.io/img/icon-192.png</url>
+      <title>behavior</title>
+      <link>https://lucianopaz.github.io/tags/behavior/</link>
+    </image>
+    
+    <item>
+      <title>Behavior modelling with AI</title>
+      <link>https://lucianopaz.github.io/project/behavior_modelling_with_ai/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://lucianopaz.github.io/project/behavior_modelling_with_ai/</guid>
+      <description>&lt;p&gt;I used AI computational models to study human gameplay as part of the &lt;a href=&#34;https://www.matemarote.edu.uy/MateMarote/&#34; target=&#34;_blank&#34;&gt;Matemarote project&lt;/a&gt;. It involved reinforcement learning, and technical skills such as SQL and javascript.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.4.0">
+
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Luciano Paz">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="This post is intended to explain:
+ What the shape attribute of a pymc3 RV is. What&rsquo;s the difference between an RV&rsquo;s and its associated distribution&rsquo;s shape. How does a distribution&rsquo;s shape determine the shape of its logp output. The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions. The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes.">
+
+  
+  <link rel="alternate" hreflang="en-us" href="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/">
+
+  
+
+
+  
+
+  
+  
+  
+  <meta name="theme-color" content="#2962ff">
+  
+
+  
+  
+  
+  
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.8.6/css/academicons.min.css" integrity="sha256-uFVgMKfistnJAfoCUQigIl+JfUaP47GrRKjf6CTPVmw=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.0/css/all.css" integrity="sha384-aOkxzJ5uQz7WBObEZcHvV5JvRW3TUc2rNPA7pe3AwnsUohiw1Vj2Rgx2KSOkF5+h" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.css" integrity="sha256-ygkqlh3CYSUri3LhQxzdcm0n1EQvH2Y+U5S2idbLtxs=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/monokai.min.css" crossorigin="anonymous" title="hl-light">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/monokai.min.css" crossorigin="anonymous" title="hl-dark" disabled>
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css" integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ==" crossorigin="anonymous">
+    
+
+    
+
+  
+
+  
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Merriweather|Roboto+Mono&display=swap">
+  
+
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.min.28e5e22c13e9896140215afdd39919e5.css">
+
+  
+    
+    
+    
+    
+      
+    
+      
+    
+    
+    
+    <link rel="stylesheet" href="/css/academic.26d85794984cad785469591fb440c71e.css">
+  
+
+  
+  
+  
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/img/icon-32.png">
+  <link rel="apple-touch-icon" type="image/png" href="/img/icon-192.png">
+
+  <link rel="canonical" href="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/">
+
+  
+  
+  
+  
+    
+  
+  
+  <meta property="twitter:card" content="summary_large_image">
+  
+  <meta property="og:site_name" content="Luciano Paz">
+  <meta property="og:url" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/">
+  <meta property="og:title" content="PyMC3 shape handling | Luciano Paz">
+  <meta property="og:description" content="This post is intended to explain:
+ What the shape attribute of a pymc3 RV is. What&rsquo;s the difference between an RV&rsquo;s and its associated distribution&rsquo;s shape. How does a distribution&rsquo;s shape determine the shape of its logp output. The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions. The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes."><meta property="og:image" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/featured.jpg">
+  <meta property="twitter:image" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/featured.jpg"><meta property="og:locale" content="en-us">
+  
+    
+      <meta property="article:published_time" content="2019-08-19T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2019-08-19T00:00:00&#43;00:00">
+  
+
+  
+
+
+  
+
+
+
+
+
+  <title>PyMC3 shape handling | Luciano Paz</title>
+
+</head>
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" >
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Search</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Search..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+<nav class="navbar navbar-light fixed-top navbar-expand-lg py-0 compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+      <a class="navbar-brand" href="/">Luciano Paz</a>
+      
+      <button type="button" class="navbar-toggler" data-toggle="collapse"
+              data-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+        <span><i class="fas fa-bars"></i></span>
+      </button>
+      
+
+    
+    <div class="collapse navbar-collapse" id="navbar">
+
+      
+      
+      <ul class="navbar-nav mr-auto">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#about"><span>Home</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#projects"><span>Projects</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#posts"><span>Posts</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Contact</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/files/cv.pdf"><span>CV</span></a>
+        </li>
+
+        
+        
+
+      
+      </ul>
+      <ul class="navbar-nav ml-auto">
+      
+
+        
+
+        
+        <li class="nav-item">
+          <a class="nav-link js-search" href="#"><i class="fas fa-search" aria-hidden="true"></i></a>
+        </li>
+        
+
+        
+
+        
+
+      </ul>
+
+    </div>
+  </div>
+</nav>
+
+
+  <article class="article" itemscope itemtype="http://schema.org/Article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+
+<div class="article-container pt-3">
+  <h1 itemprop="name">PyMC3 shape handling</h1>
+
+  
+
+  
+
+
+
+<meta content="2019-08-19 00:00:00 &#43;0000 UTC" itemprop="datePublished">
+<meta content="2019-08-19 00:00:00 &#43;0000 UTC" itemprop="dateModified">
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    <time>2019-08-19</time>
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    24 min read
+  </span>
+  
+
+  
+  
+  
+    
+      
+      
+      
+    
+  
+
+  
+  
+  <span class="middot-divider"></span>
+  <span class="article-categories">
+    <i class="fas fa-folder mr-1"></i><a href="/categories/ppl/">ppl</a></span>
+  
+
+  
+    
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/&amp;text=PyMC3%20shape%20handling" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/&amp;t=PyMC3%20shape%20handling" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook-f"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=PyMC3%20shape%20handling&amp;body=https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/&amp;title=PyMC3%20shape%20handling" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://web.whatsapp.com/send?text=PyMC3%20shape%20handling%20https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/&amp;title=PyMC3%20shape%20handling" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+  
+
+</div>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="btn-links mb-3">
+  
+  
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+  
+    
+  
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+
+</div>
+
+
+<div class="article-header article-container featured-image-wrapper mt-4 mb-4" style="max-width: 720px; max-height: 503px;">
+  <div style="position: relative">
+    <img src="/2019/08/19/pymc3-shape-handling/featured_huea7725a461d6ea7c46a3b4309cd37930_425025_720x0_resize_q90_lanczos.jpg" alt="" class="featured-image">
+    <span class="article-header-caption">&ldquo;<em>Lasciate ogni speranza, voi che entrate qui</em> ”</br>Allegedly Dante&rsquo;s words when he wrote about the many dimensions of shape hell</span>
+  </div>
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style" itemprop="articleBody">
+      
+
+<p>This post is intended to explain:</p>
+
+<ul>
+<li>What the <code>shape</code> attribute of a pymc3 RV is.</li>
+<li>What&rsquo;s the difference between an RV&rsquo;s and its associated distribution&rsquo;s <code>shape</code>.</li>
+<li>How does a distribution&rsquo;s <code>shape</code> determine the <code>shape</code> of its <code>logp</code> output.</li>
+<li>The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions.</li>
+<li>The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes.</li>
+<li>Some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them). <em>In a separate blog post!</em></li>
+</ul>
+
+<h2 id="the-origin-of-all-evil-ambiguity">The origin of all <del>evil</del> ambiguity</h2>
+
+<p>Before going into the depths of PyMC3, we&rsquo;ll take a detour around <code>numpy</code>&rsquo;s random number generators to introduce the many semantically relevant shapes involved with random variables, samples drawn from probability distributions and how these affect the computed probability densities.</p>
+
+<p><code>numpy</code> has no concept of a random variable class, it provides some random number generators from which you can draw some samples that follow a particular probability distribution (I&rsquo;m purposely not mentioning <code>scipy.stats</code> here). Lets draw some numbers using <code>numpy.random.normal</code>:</p>
+
+<pre><code class="language-python">import numpy as np
+
+np.random.seed(12345)
+</code></pre>
+
+<pre><code class="language-python"># Lets make a call using all the defaults
+x = np.random.normal()
+print(&quot;Sample's value = {}\nSample's shape = {}&quot;.format(x, np.array(x).shape))
+</code></pre>
+
+<pre><code>Sample's value = -0.20470765948471295
+Sample's shape = ()
+</code></pre>
+
+<p>You can see that if we call the random number generator with empty arguments we get a single number, or more technically a scalar. We actually have to make a zero-sized array by wrapping the result in <code>np.array(x)</code> to be able to get a <code>shape</code> attribute out of it.</p>
+
+<p>Supplying the <code>size</code> argument we can control the number of draws we want to get. Well, we actually control the <code>shape</code> of the output array.</p>
+
+<pre><code class="language-python"># Lets make a call asking for a particular size
+x = np.random.normal(size=10)
+print(&quot;Sample's value = {}\nSample's shape = {}&quot;.format(x, x.shape))
+</code></pre>
+
+<pre><code>Sample's value = [ 0.47894334 -0.51943872 -0.5557303   1.96578057  1.39340583  0.09290788
+  0.28174615  0.76902257  1.24643474  1.00718936]
+Sample's shape = (10,)
+</code></pre>
+
+<pre><code class="language-python"># Lets make a call asking for a tuple size
+x = np.random.normal(size=(10, 4, 2))
+x.shape
+</code></pre>
+
+<pre><code>(10, 4, 2)
+</code></pre>
+
+<p>Ok, so we control the number of draws we want to make using the <code>size</code> argument. The result of a call to the random number generator can return an <code>ndarray</code> or a scalar. <strong>But what happens if we change the distribution parameters, <code>loc</code> and <code>scale</code>?</strong></p>
+
+<pre><code class="language-python"># Lets make a call supplying an array of locs
+x = np.random.normal(loc=np.arange(10))
+x.shape
+</code></pre>
+
+<pre><code>(10,)
+</code></pre>
+
+<p>We now also get an <code>ndarray</code> instead of a scalar! We get as many numbers as elements in the supplied <code>loc</code> distribution parameter. <strong>So what does <code>size</code> do now?</strong></p>
+
+<pre><code class="language-python"># Lets make a call supplying an array of locs and asking for a given size
+x = np.random.normal(loc=np.arange(10), size=10)
+x.shape
+</code></pre>
+
+<pre><code>(10,)
+</code></pre>
+
+<p>Wait, so what did <code>size</code> do here? <strong>The answer is essentially nothing!</strong></p>
+
+<h4 id="distribution-s-shape">Distribution&rsquo;s shape</h4>
+
+<p>What is actually happening is that the distribution parameters, like <code>loc</code> and <code>scale</code> of a <code>normal</code>, implicitly define what we could call the <strong>distribution&rsquo;s shape</strong> (when we get to multivariate distributions we will split this into <code>batch_shape</code> and <code>event_shape</code>s as in tensorflow probability, but for now lets stick to <code>distribution_shape</code>). The random number generator draws samples using the distribution&rsquo;s implicit shape, but also vectorizes the random calls over the extra dimensions provided in <code>size</code>. If the distribution cannot <em>broadcast</em> with the supplied <code>size</code>, then an error is raised (it&rsquo;s actually more pedantic than simple broadcasting).</p>
+
+<pre><code class="language-python"># size and loc broadcast so the random draws are vectorized over the extra dimensions of size
+x = np.random.normal(loc=np.arange(10), size=(300, 10))
+x.shape
+</code></pre>
+
+<pre><code>(300, 10)
+</code></pre>
+
+<pre><code class="language-python"># Each column has a different loc
+np.mean(x, axis=0)
+</code></pre>
+
+<pre><code>array([0.01963069, 0.95968487, 2.02679069, 2.99794185, 4.00357886,
+       4.98255339, 6.08488072, 6.895649  , 8.07455776, 9.02202938])
+</code></pre>
+
+<pre><code class="language-python"># size does not broadcast with loc, and an error is raised
+x = np.random.normal(loc=np.arange(10), size=3)
+x.shape
+</code></pre>
+
+<pre><code>---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-9-6ec74377ffcd&gt; in &lt;module&gt;()
+      1 # size does not broadcast with loc, and an error is raised
+----&gt; 2 x = np.random.normal(loc=np.arange(10), size=3)
+      3 x.shape
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: shape mismatch: objects cannot be broadcast to a single shape
+</code></pre>
+
+<pre><code class="language-python"># size and loc broadcast so the random draws are vectorized over the extra dimensions of size
+x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(10, 300))
+x.shape
+</code></pre>
+
+<pre><code>(10, 300)
+</code></pre>
+
+<pre><code class="language-python"># Each row has a different loc
+np.mean(x, axis=1)
+</code></pre>
+
+<pre><code>array([0.02937006, 0.98651717, 1.9862869 , 3.00312987, 4.017759  ,
+       4.92210904, 6.01890166, 7.0359308 , 7.98685293, 8.88494283])
+</code></pre>
+
+<pre><code class="language-python"># size and loc broadcast but the non singleton dimensions in loc do not match
+# with the correspoding size element so an error is raised
+x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(1, 300))
+x.shape
+</code></pre>
+
+<pre><code>---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-12-1b49ca5414a0&gt; in &lt;module&gt;()
+      1 # size and loc broadcast but the non singleton dimensions in loc do not match
+      2 # with the correspoding size element so an error is raised
+----&gt; 3 x = np.random.normal(loc=np.arange(10)[:, np.newaxis], size=(1, 300))
+      4 x.shape
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: size is not compatible with inputs
+</code></pre>
+
+<pre><code class="language-python"># The distribution's implictly defined shape depends on how the parameters
+# loc and scale broadcast with each other
+x = np.random.normal(
+    loc=np.arange(3).reshape((3, 1)),
+    scale=np.arange(4) + 1,
+    size=(3000, 3, 4)
+)
+x.shape
+</code></pre>
+
+<pre><code>(3000, 3, 4)
+</code></pre>
+
+<pre><code class="language-python"># The second axis has different means and the last axis has different standard deviations
+np.mean(x, axis=0)
+</code></pre>
+
+<pre><code>array([[ 0.0102261 , -0.00975594, -0.0082977 ,  0.11634068],
+       [ 0.9840894 ,  0.94276502,  0.93028859,  0.968283  ],
+       [ 2.00062043,  1.99421095,  2.11480227,  1.83806223]])
+</code></pre>
+
+<pre><code class="language-python">np.std(x, axis=0)
+</code></pre>
+
+<pre><code>array([[0.98598852, 2.02771629, 2.98777904, 3.94358108],
+       [1.01194307, 2.00820371, 3.0372083 , 3.94933656],
+       [1.00660898, 2.02210172, 3.06703822, 3.98733117]])
+</code></pre>
+
+<h4 id="pointers-that-we-need-to-understand-so-far">Pointers that we need to understand so far:</h4>
+
+<ul>
+<li>Distributions have parameters. These parameters can implicitly determine the distribution&rsquo;s <code>shape</code>.</li>
+<li>Samples drawn from a distribution are <code>ndarray</code>s that have some <code>shape</code> which is controlled with the <code>size</code> of the draw and the distribution&rsquo;s implicit <code>shape</code>.</li>
+<li>Any operation that is performed on a sample drawn from a probability distribution does not actually interact with the distribution&rsquo;s <code>shape</code>, but with something that is determined by <code>size</code> along with the distribution&rsquo;s <code>shape</code>.</li>
+<li><strong>The word <code>shape</code> is shamelessly used all over the place!</strong> This is maybe the prime source of confusion in all things <code>shape</code> related.</li>
+</ul>
+
+<hr />
+
+<h3 id="multivariate-distributions">Multivariate distributions</h3>
+
+<p>Up until now we only dealt with the normal distribution&rsquo;s random number generator. This is a <strong>scalar</strong> distribution. What this means is that a single sample drawn from a scalar distribution is also a scalar. On the other hand, <strong>multivariate</strong> distributions, such as the <a href="https://en.wikipedia.org/wiki/Multinomial_distribution" target="_blank">Multinomial</a>, <a href="https://en.wikipedia.org/wiki/Multivariate_normal_distribution" target="_blank">Multivariate Normal</a> and <a href="https://en.wikipedia.org/wiki/Wishart_distribution" target="_blank">Wishart</a>, amongst others, yield vectors or higher ranked tensors as their single samples. To make this more precise, we will to refer to a single sample yielded by a single distribution as an <strong>event</strong>, and its shape will be called the <strong><code>event_shape</code></strong> (we call them events because we follow <a href="https://colab.research.google.com/github/tensorflow/probability/blob/master/tensorflow_probability/examples/jupyter_notebooks/Understanding_TensorFlow_Distributions_Shapes.ipynb" target="_blank">tensorflow probability&rsquo;s naming convention</a> for shapes).</p>
+
+<ul>
+<li>Scalar distributions have an <code>event_shape == ()</code>.</li>
+<li>Multivariate distributions have non empty <code>event_shape</code>s.</li>
+</ul>
+
+<p><strong>But what happened when we passed a <code>loc</code> vector to the normal distribution?</strong> Did we somehow make a multivariate distribution implicitly? The answer is <strong>no</strong>, we did not make a multivariate distribution, we made a <strong>batch of many scalar distribution</strong>. If you&rsquo;re confused, don&rsquo;t worry. The difference between a batch and a multivariate distribution is not clear by just looking at the shapes of samples drawn from them. For example, if we have a batch of two scalar normal distributions, and compare it to a bivariate normal distribution, both have the <strong>same distribution shape, <code>(2,)</code></strong>. The difference will only become clear when we look at how the distribution&rsquo;s <code>logp</code> is computed. To do this, we&rsquo;ll rely on <code>scipy.stats</code> which provides a uniform API for many probability distributions and there <code>logpdf</code> methods.</p>
+
+<pre><code class="language-python">from scipy import stats
+
+loc = np.arange(2)
+scale = np.ones(2)
+observed = np.arange(2)
+
+batch_logp = stats.norm.logpdf(observed, loc, scale)
+event_logp = stats.multivariate_normal.logpdf(observed, loc, scale)
+print(&quot;Batch of normals logp shape    = {}&quot;.format(batch_logp.shape))
+print(&quot;Multivariate normal logp shape = {}&quot;.format(event_logp.shape))
+print(&quot;Batch of normals total logp    = {}&quot;.format(np.sum(batch_logp)))
+print(&quot;Multivariate normal total logp = {}&quot;.format(np.sum(event_logp)))
+</code></pre>
+
+<pre><code>Batch of normals logp shape    = (2,)
+Multivariate normal logp shape = ()
+Batch of normals total logp    = -1.8378770664093453
+Multivariate normal total logp = -1.8378770664093453
+</code></pre>
+
+<p>The distribution&rsquo;s <code>logp</code> measures the probability density (or mass for discrete distributions) that a sample was drawn from it. For the batch of normals, each element in the batch shape corresponds to an independent observation that should be measured according to an independent distribution in the batch. For this reason, we get <code>(2,)</code> numbers returned by the batch of gaussian distributions. On the other hand, the bivariate gaussian has <code>event_shape == (2,)</code>. The entire axis of the <code>event_shape</code> is consumed with the <code>logp</code> calculation.</p>
+
+<p>Generally, it is possible to write a batch of multivariate distributions. The resulting distribution shape is the combination of the batch and event shapes.</p>
+
+<h4 id="as-a-final-summary-on-the-shape-semantics">As a final summary on the shape semantics:</h4>
+
+<ul>
+<li>The <code>event_shape</code> is the shape of a single draw from the unbatched distribution. For scalar distributions, this is an empty tuple <code>()</code>.</li>
+<li>The <code>batch_shape</code> describes the shape of a draw from a batch of many distributions (like what we did with the normal draws when we supplied many <code>loc</code> and <code>scale</code>s).</li>
+<li>The <code>sample_shape</code> describes the shape of the independent, identically distributed (IID) draws made from a distribution or batch of distributions.</li>
+<li>A distribution&rsquo;s shape is made up by a batch shape and an event shape: <code>distribution_shape == batch_shape + event_shape</code>.</li>
+<li>When you draw random samples from a distribution, the resulting array has the following shape: <code>sample_shape + batch_shape + event_shape</code></li>
+<li>When you compute the <code>logp</code> of an observed sample, the event part of the shape is consumed and the output&rsquo;s shape will be <code>sample_shape + batch_shape</code>.</li>
+</ul>
+
+<p>The three shape related concepts are a bit complicated to grasp so I recommend that you read <a href="https://ericmjl.github.io/blog/2019/5/29/reasoning-about-shapes-and-probability-distributions/" target="_blank">Eric Ma&rsquo;s very nice explanation on them</a> or just look at <a href="https://colab.research.google.com/github/tensorflow/probability/blob/master/tensorflow_probability/examples/jupyter_notebooks/Understanding_TensorFlow_Distributions_Shapes.ipynb" target="_blank">TFP&rsquo;s colab on them</a>.</p>
+
+<hr />
+
+<h2 id="shapes-in-pymc3">Shapes in PyMC3</h2>
+
+<p><a href="https://docs.pymc.io/" target="_blank">PyMC3</a> is intended to be a user friendly modeling package in python. It aims to make probabilistic programming easy by providing an intuitive syntax to describe data generative processes and out-of-the-box Markov Chain Monte Carlo (MCMC) methods to make inferences from observed data. <strong>It is designed with inference in mind.</strong> It uses <code>theano</code> as its computational backend to be able to express mathematical operations on random variables symbolically. pymc3&rsquo;s design has lead to a lot of ambiguity on the what <code>shape</code> actually means, and how it affects sampling under different circumstances. The main reasons for the <code>shape</code> ambiguity in pymc3 are:</p>
+
+<ol>
+<li>The three shape concepts (sample, batch and event shapes) are never explicitly disambiguated in the <code>Distribution</code> nor in the <code>RV</code> classes.</li>
+<li>There is no distinction between batch and event shapes, users can only set the distribution&rsquo;s shape, which is an implicit combination of both.</li>
+<li>We deal with <code>theano.tensor</code> that represent mathematical operations over random variates. These operations hide most of the semantical batch and event shapes under a single distribution shape in the best case, and as a symbolic shape that is unknown until run time in the worst case.</li>
+<li>The mathematical operations may work well for the model definition when one only needs to <code>pm.sample</code>, but might run into shape problems when running <code>pm.sample_prior_predictive</code> and <code>pm.sample_posterior_predictive</code>.</li>
+<li>Model <code>logp</code> reduces the random variable&rsquo;s <code>logp</code> outputs using <code>theano.tensor.sum</code> so the sample-batch shape information is lost for sampling.</li>
+<li>The <code>shape</code> of <code>ObservedRV</code>s is partly set by the <code>observed</code> argument, but this is not equivalent to the distribution&rsquo;s <code>shape</code>, leading to an ambiguous and confusing situation for users when they define their models, and potential errors when using <code>sample_prior_predictive</code>.</li>
+<li>The distribution&rsquo;s batch and event shape is not inferred from the supplied parameters, one must always specify the distribution&rsquo;s <code>shape</code> during model construction.</li>
+</ol>
+
+<h3 id="random-variable-s-shapes-and-problems-with-sampling">Random variable&rsquo;s shapes and problems with sampling</h3>
+
+<p>To highlight some of these complications, we have to look at data generative models. Random variables are used to define data generation processes like the following:</p>
+
+<p>$$
+\beta_{G} \sim \mathcal{N}(0, 1)\\<br />
+\gamma \sim \mathcal{\Gamma}(10, 10)\\<br />
+z_{i} \sim \mathcal{N}(0, 1)\\<br />
+\beta_{i} = \beta_{G} + \gamma z_{i}\\<br />
+\sigma \sim \mathcal{\Gamma}(3, 3)\\<br />
+y \sim \mathcal{N}\left(\vec{X}. \vec{\beta}, \sigma\right)
+$$</p>
+
+<p>This is a simple hierarchical model usually used for linear regressions with partial pooling. The key pieces of information for end users are: $y$ and $\vec{X}$. These are the actually observed values. $y$ represents an observed output of the assumed data generation process, and $\vec{X}$ would be the corresponding input. We assume $\vec{X}$ is a vector because it can have more than one feature that is used to generate the output observation. In general, we have more than a single observation, in thoses cases $\vec{y}$ is a vector (or 1D array) and $\mathbb{X}$ is a matrix (or 2D array, made from vertically stacking many $\vec{X}$).</p>
+
+<p>The rest of the parameters define the unobserved random variables that we will try to infer given the set of observations. $\sigma$ is the observation noise. $\vec{\beta}$ are the regression weights, and they are a summation of two other sets of random variables: $\beta_{G}$, $\gamma$ and $\vec{z}$.</p>
+
+<p>When we do MCMC, we propose candidate values for the random variables based on the model&rsquo;s <code>logp</code>. We use <code>theano</code> and our RVs are essentially placeholders or <code>Variables</code> whose values are unknown when the model is defined, but are updated during sampling. <strong>The only thing that is fixed during the model&rsquo;s construction is what we will call the distribution&rsquo;s core dimensions, <code>ndim</code></strong>, which is a fancy way of calling the axes defined by <code>batch_shape</code> and <code>event_shape</code>. MCMC sampling in pymc3 operates on single samples from distributions and only the <code>logp</code> shape handling of <code>ObservedRV</code>s can bring shape related trouble (like what happened in <a href="https://github.com/pymc-devs/pymc3/issues/3535" target="_blank">this issue</a> with <code>Categorical.logp</code>).</p>
+
+<p>On the other hand, when we do forward sampling (i.e. <code>sample_prior_predictive</code> and <code>sample_posterior_predictive</code>) the same data generation model that was defined only taking into account the core dimensions, has to be used with the extra dimensions given by <code>sample_shape</code>. This leads to a whole world of pain which we will illustrate now using only <code>numpy</code> to write the data generation model:</p>
+
+<pre><code class="language-python"># This implementation uses the argument size incorrectly
+def unvectorized_prior_sampler(X=np.arange(3), size=None):
+    normal = np.random.normal
+    beta_g = normal(0, 1, size=size)
+    gamma = np.random.gamma(10, 10, size=size)
+    z = normal(np.zeros(X.shape[-1]), 1, size=size)
+    beta = beta_g + gamma * z
+    sigma = np.random.gamma(3, 3, size=size)
+    return normal(np.dot(X, beta), sigma, size=size)
+</code></pre>
+
+<p>So lets try out our nice little <code>unvectorized_prior_sampler</code> using only the default <code>size=None</code>. This means that</p>
+
+<ol>
+<li>We will be drawing a single sample from each distribution</li>
+<li>Said sample will have the distribution&rsquo;s implicit <code>shape</code></li>
+
+<li><p>All mathematical operations will be performed on the resulting <code>float</code>s or <code>ndarray</code>s that are returned as the distributions samples.</p>
+
+<pre><code class="language-python">from matplotlib import pyplot as plt
+import seaborn as sns
+plt.ion()
+
+sns.distplot([unvectorized_prior_sampler() for _ in range(5000)]);
+</code></pre></li>
+</ol>
+
+<p><img src="index_files/index_33_0.png" alt="png" /></p>
+
+<p>Nice! Everything works! Now lets try to do the same but taking advantage of <code>size</code> to draw multiple values at once and vectorize operations</p>
+
+<pre><code class="language-python">unvectorized_prior_sampler(size=5000)
+</code></pre>
+
+<pre><code>---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-20-30082f0e1390&gt; in &lt;module&gt;()
+----&gt; 1 unvectorized_prior_sampler(size=5000)
+
+
+&lt;ipython-input-17-2bc805c3fbae&gt; in unvectorized_prior_sampler(X, size)
+      4     beta_g = normal(0, 1, size=size)
+      5     gamma = np.random.gamma(10, 10, size=size)
+----&gt; 6     z = normal(np.zeros(X.shape[-1]), 1, size=size)
+      7     beta = beta_g + gamma * z
+      8     sigma = np.random.gamma(3, 3, size=size)
+
+
+mtrand.pyx in mtrand.RandomState.normal()
+
+
+mtrand.pyx in mtrand.cont2_array()
+
+
+ValueError: shape mismatch: objects cannot be broadcast to a single shape
+</code></pre>
+
+<p>Oh no! <strong>We can&rsquo;t use the same <code>size</code> argument for drawing from every distribution, because it doesn&rsquo;t broadcast well with the implicit distribution&rsquo;s shape</strong>.</p>
+
+<p>What we want to do is set the <code>sample_shape</code> instead, which is agnostic of each distribution&rsquo;s shape, so will try to work around the <code>distribution_shape</code>.</p>
+
+<pre><code class="language-python"># This implementation uses the argument sample_shape incorrectly
+def incorrect_vectorized_prior_sampler(X=np.arange(3), sample_shape=None):
+    normal = np.random.normal
+    if sample_shape is None:
+        sample_shape = ()
+    try:
+        sample_shape = tuple(sample_shape)
+    except TypeError:
+        sample_shape = (sample_shape,)
+    beta_g = normal(0, 1, size=sample_shape)
+    gamma = np.random.gamma(10, 10, size=sample_shape)
+    # We add the distribution's shape at the end of sample_shape
+    z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+    beta = beta_g + gamma * z
+    sigma = np.random.gamma(3, 3, size=sample_shape)
+    return normal(np.dot(X, beta), sigma, size=sample_shape)
+</code></pre>
+
+<pre><code class="language-python">incorrect_vectorized_prior_sampler(sample_shape=5000)
+</code></pre>
+
+<pre><code>---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-22-235899f566bb&gt; in &lt;module&gt;()
+----&gt; 1 incorrect_vectorized_prior_sampler(sample_shape=5000)
+
+
+&lt;ipython-input-21-f4692868adc5&gt; in incorrect_vectorized_prior_sampler(X, sample_shape)
+     12     # We add the distribution's shape at the end of sample_shape
+     13     z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+---&gt; 14     beta = beta_g + gamma * z
+     15     sigma = np.random.gamma(3, 3, size=sample_shape)
+     16     return normal(np.dot(X, beta), sigma, size=sample_shape)
+
+
+ValueError: operands could not be broadcast together with shapes (5000,) (5000,3) 
+</code></pre>
+
+<p>Still not working! Lets zoom-in to what is causing the error. We see that we are summing <code>beta_g</code>&rsquo;s samples with the product of <code>gamma</code> and <code>z</code>&rsquo;s samples. Let&rsquo;s look at the shapes of the samples:</p>
+
+<ul>
+<li><code>beta_g.shape == sample_shape</code></li>
+<li><code>gamma.shape == sample_shape</code></li>
+<li><code>z.shape == sample_shape + (X.shape[-1],)</code></li>
+</ul>
+
+<p>So in our particular examples these are shaped as:</p>
+
+<ul>
+<li><code>beta_g.shape == (5000,)</code></li>
+<li><code>gamma.shape == (5000,)</code></li>
+<li><code>z.shape == (5000, 3)</code></li>
+</ul>
+
+<p>So it makes sense that the product of <code>gamma</code> with <code>z</code> does not broadcast. You could ask yourself, <strong>why did this work at all when we call this function with <code>sample_shape=None</code>?</strong> The answer is that a single sample from each distribution (calling with <code>sample_shape=()</code>), has the distribution&rsquo;s implicit <code>shape</code>, and those <strong>DO BROADCAST CORRECTLY</strong>:</p>
+
+<ul>
+<li><code>beta_g.shape == ()</code></li>
+<li><code>gamma.shape == ()</code></li>
+<li><code>z.shape == (3,)</code></li>
+</ul>
+
+<p>To make our model&rsquo;s data generation process fully vectorized we need two things:</p>
+
+<ol>
+<li>To ensure that all the mathematical operations (sums, products, dots) and all the conditional dependences between variables (like $y$ and $\vec{\beta}$) work on the distribution&rsquo;s core dimensions (<code>batch_shape + event_shape</code>). We choose this name to stick with numpy&rsquo;s glossary of generalized universal functions.</li>
+
+<li><p>That the mathematical operations be vectorized on the extra dimensions added by the requested <code>sample_shape</code> (something like what is done with <a href="https://docs.scipy.org/doc/numpy/reference/c-api.generalized-ufuncs.html" target="_blank">numpy&rsquo;s generic ufuncs</a>).</p>
+
+<pre><code class="language-python"># Overly expressive but _almost_ fully vectorized implementation
+def vectorized_prior_sampler(X=np.arange(3), sample_shape=None):
+normal = np.random.normal
+if sample_shape is None:
+    sample_shape = ()
+try:
+    sample_shape = tuple(sample_shape)
+except TypeError:
+    sample_shape = (sample_shape,)
+beta_g = normal(0, 1, size=sample_shape)
+gamma = np.random.gamma(10, 10, size=sample_shape)
+# We add the distribution's shape at the end of sample_shape
+z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+beta = beta_g[..., None] + gamma[..., None] * z
+sigma = np.random.gamma(3, 3, size=sample_shape)
+return normal(np.einsum(&quot;...i,...i&quot;, X, beta), sigma, size=sample_shape)
+</code></pre>
+
+<pre><code class="language-python">sns.distplot(vectorized_prior_sampler(sample_shape=5000));
+</code></pre></li>
+</ol>
+
+<p><img src="index_files/index_42_0.png" alt="png" /></p>
+
+<p>Things can still go horribly wrong if we pass a stack of multiple <code>X</code> vectors. This is a big deal because it happens when we set more than a single observed <code>X</code> and <code>y</code>.</p>
+
+<pre><code class="language-python">X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+vectorized_prior_sampler(X=X, sample_shape=5000)
+</code></pre>
+
+<pre><code>---------------------------------------------------------------------------
+
+ValueError                                Traceback (most recent call last)
+
+&lt;ipython-input-25-f754aa0fb06e&gt; in &lt;module&gt;()
+      1 X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+----&gt; 2 vectorized_prior_sampler(X=X, sample_shape=5000)
+
+
+&lt;ipython-input-23-5506fae2796b&gt; in vectorized_prior_sampler(X, sample_shape)
+     14     beta = beta_g[..., None] + gamma[..., None] * z
+     15     sigma = np.random.gamma(3, 3, size=sample_shape)
+---&gt; 16     return normal(np.einsum(&quot;...i,...i&quot;, X, beta), sigma, size=sample_shape)
+
+
+~/anaconda3/lib/python3.6/site-packages/numpy/core/einsumfunc.py in einsum(*operands, **kwargs)
+   1067     # If no optimization, run pure einsum
+   1068     if optimize_arg is False:
+-&gt; 1069         return c_einsum(*operands, **kwargs)
+   1070 
+   1071     valid_einsum_kwargs = ['out', 'dtype', 'order', 'casting']
+
+
+ValueError: operands could not be broadcast together with remapped shapes [original-&gt;remapped]: (10,3)-&gt;(10,3) (5000,3)-&gt;(5000,3) 
+</code></pre>
+
+<p>To solve this, we need to make our <code>einsum</code> aware of the extra observation dimensions in <code>X</code>, and then ensure that the result broadcasts with samples taken from <code>sigma</code>.</p>
+
+<pre><code class="language-python"># fully vectorized implementation
+def prior_sampler(X=np.arange(3), sample_shape=None):
+    normal = np.random.normal
+    if sample_shape is None:
+        sample_shape = ()
+    try:
+        sample_shape = tuple(sample_shape)
+    except TypeError:
+        sample_shape = (sample_shape,)
+    beta_g = normal(0, 1, size=sample_shape)
+    gamma = np.random.gamma(10, 10, size=sample_shape)
+    # We add the distribution's shape at the end of sample_shape
+    z = normal(np.zeros(X.shape[-1]), 1, size=sample_shape + (X.shape[-1],))
+    beta = beta_g[..., None] + gamma[..., None] * z
+    sigma = np.random.gamma(3, 3, size=sample_shape)
+    if X.ndim == 1:
+        signature = &quot;...i,...i&quot;
+    else:
+        signature = &quot;...{0}i,...i-&gt;...{0}&quot;.format(&quot;&quot;.join([chr(106 + dim) for dim in range(X.ndim - 1)]))
+        sigma = np.reshape(sigma, sigma.shape + (1,) * (X.ndim - 1))
+    return normal(np.einsum(signature, X, beta), sigma, size=sample_shape + (X.shape[:-1]))
+
+X = np.tile(np.arange(3).reshape((1, 3)), (10, 1))
+prior = prior_sampler(X=X, sample_shape=5000)
+
+colors = [plt.get_cmap(&quot;rainbow&quot;)(x) for x in np.linspace(0, 1, len(X))]
+plt_x = np.linspace(
+    np.floor(np.min(prior) / 1) * 1,
+    np.ceil(np.max(prior) / 1) * 1,
+    1000
+)
+for offset, (p, color) in enumerate(zip(prior.T, colors)):
+    plt_y = stats.gaussian_kde(p)(plt_x)
+    plt.plot(plt_x - offset * 100, plt_y + offset * 0.001, color=color)
+plt.axis(&quot;off&quot;);
+</code></pre>
+
+<p><img src="index_files/index_46_0.png" alt="png" /></p>
+
+<h4 id="summary">Summary</h4>
+
+<p>All of this data generation process using raw <code>numpy</code> was intended to showcase that:</p>
+
+<ul>
+<li>When you write down a model and only think about the distribution&rsquo;s core dimensions, this will in general make it difficult to generate data (sample the prior or posterior predictive) in a vectorized fashion.</li>
+<li>To ensure proper vectorization, the mathematical operations that act on RVs <strong>must work on the core dimensions and be vectorized on the extra axes</strong>.</li>
+<li>The RVs that are themselves parameters of other distributions downstream will have an extra <code>sample_shape</code> axes when generating data. This means that <strong>the distribution parameters must be broadcastable excluding the <code>sample_shape</code> parts</strong>.</li>
+</ul>
+
+<p>pymc3 does most of this for you in <code>sample_prior_predictive</code> and <code>sample_posterior_predictive</code>. When we write down a model in pymc3, we can easily identify the distribution core dimensions. This allows us to vectorize the mathematical operations using <code>numpy.vectorize</code> with an adequate signature. Furthermore, the distribution parameters are broadcasted ignoring the <code>sample_shape</code> part thanks to the utilities defined in the <a href="https://docs.pymc.io/api/shape_utils.html" target="_blank"><code>pymc3.distributions.shape_utils</code> module</a>. <strong>However, at the moment this broadcasting works for scalar distributions only, the multivariate distributions are still not fully vectorized.</strong></p>
+
+<h3 id="pymc3-shape-model-construction">PyMC3 shape model construction</h3>
+
+<p>Before looking at the equivalent data generation model from above but written in pymc3, I&rsquo;ll briefly remind you of three major things that one should always do with shapes in pymc3 models:</p>
+
+<ol>
+<li>When we create random variables inside a model, their <code>shape</code> cannot be implicitly inferred from the distribution parameters. This means that if we want to have multidimensional or batches of distributions <strong>we need to specify the desired <code>shape</code> during the distribution&rsquo;s instantiation</strong>.</li>
+<li>When we create a random variable and specify the <code>shape</code>, we are not setting the random variable&rsquo;s <code>shape</code>, <strong>we are setting the distribution&rsquo;s <code>shape</code> and the distribution&rsquo;s core dimensions</strong>.</li>
+<li>When a random variable is given observations, <strong>the <code>ObservedRV</code>&rsquo;s <code>shape</code></strong> (not the underlying distribution&rsquo;s shape) <strong>is determined by the <code>observed</code> argument.</strong> At the moment, there are no checks in place between the <code>ObservedRV</code> and the underlying distribution&rsquo;s shapes, but in the near future, an error will be raised if the <code>ObservedRV</code>&rsquo;s shape is not consistent with a sample, with a given <code>sample_shape</code>, drawn from the underlying distribution.</li>
+</ol>
+
+<p>Handling observations is really important in pymc3, so I&rsquo;ll stop here a bit because there are a lot of ambiguous things revolving around <code>shapes</code>. Essentially <code>ObservedRV</code>s have an <code>observed</code> attribute that represent the data that they have observed. This data should have a <code>shape</code> that looks like <code>sample_shape + distribution_shape</code>. The distribution&rsquo;s <code>shape</code> should always be provided, or it will be assumed to represent a scalar RV (<code>distribution_shape=()</code> and hence zero core dimensions). When we draw samples from the posterior predictive distribution, we let the <code>ObservedRV</code>s <code>shape</code> be treated as the distribution&rsquo;s <code>shape</code>. When we draw samples from the prior predictive distribution, we want to ignore the <code>ObservedRV</code>&rsquo;s <code>shape</code> and just work with the underlying distribution&rsquo;s <code>shape</code> (this is currently not working due to an <a href="https://github.com/pymc-devs/pymc3/issues/1094" target="_blank">old open issue</a>).</p>
+
+<p>Now lets define our model in pymc3</p>
+
+<pre><code class="language-python">import numpy as np
+import theano
+from theano import tensor as tt
+import pymc3 as pm
+
+
+# Model definition is encapsulated to easily use with or without observations
+def model_factory(X=np.arange(3), y=None):
+    with pm.Model() as model:
+        beta_g = pm.Normal(&quot;beta_g&quot;, mu=0, sigma=1)
+        gamma = pm.Gamma(&quot;gamma&quot;, alpha=10, beta=10)
+        z = pm.Normal(&quot;z&quot;, mu=0, sigma=1, shape=X.shape[1])
+        sigma = pm.Gamma(&quot;sigma&quot;, alpha=3, beta=3)
+        beta = beta_g + gamma * z
+        y = pm.Normal(
+            &quot;y&quot;,
+            mu=tt.dot(X, beta),
+            sigma=sigma,
+            shape=X.shape[:-1],
+            observed=y
+        )
+    return model
+
+# Data generation
+X = np.random.randn(400, 3)
+X[:, 0] = 1.
+with model_factory(X):
+    prior = pm.sample_prior_predictive(samples=1)
+y = prior.pop(&quot;y&quot;)
+true_parameters = prior
+print(true_parameters)
+
+# Inference
+with model_factory(X, y) as model:
+    trace = pm.sample()
+    pm.plot_posterior(trace)
+</code></pre>
+
+<pre><code>/home/lpaz/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+
+
+{'sigma': array(0.86392362), 'z': array([ 0.58161754, -0.92677227,  0.60365752]), 'gamma': array(0.90931996), 'sigma_log__': -0.1462709159678767, 'beta_g': array(-1.14124179), 'gamma_log__': -0.09505825242743682}
+
+
+Auto-assigning NUTS sampler...
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [sigma, z, gamma, beta_g]
+Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000 [00:16&lt;00:00, 124.98draws/s]
+The number of effective samples is smaller than 25% for some parameters.
+</code></pre>
+
+<p><img src="index_files/index_50_3.png" alt="png" /></p>
+
+<p>The resulting trace seems mostly fine, the posterior densities are around where they should be, and the model seems to have converged well enough (I don&rsquo;t show the checks here to avoid clobbering the post). Lets just pay attention to the <code>shape</code> parameters that I passed along in the model&rsquo;s definition.</p>
+
+<ul>
+<li>I wrote a factory function to be able to easily create a model I&rsquo;ll use without observations to use <code>sample_prior_predictive</code> to generate a set of observations.</li>
+<li>Then, I create a second model passing the observed data to do inference.</li>
+<li>All the distributions that are not scalar have a specified <code>shape</code>, including the observed <code>y</code>. This is because, the distribution <code>shape</code> cannot be inferred properly from the distribution parameters.</li>
+</ul>
+
+<p>We can view some of the <strong>differences between RV and distribution shapes</strong> with this model:</p>
+
+<pre><code class="language-python">def rv_shape_info(model, rv):
+    try:
+        shape = &quot;is a symbolic theano expression that evaluates to {}&quot;.format(rv.shape.eval())
+    except:
+        shape = &quot;is a symbolic theano expression, unknown until runtime&quot;
+    return (
+        &quot;RV name = {}.\n&quot;
+        &quot;Type of RV = {}.\n&quot;
+        &quot;RV shape {}.\n&quot;
+        &quot;Distribution shape = {}\n&quot;
+        &quot;logp shape = {}.\n&quot;.
+        format(
+            rv.name,
+            type(rv),
+            shape,
+            rv.distribution.shape,
+            rv.logp_elemwise(model.test_point).shape
+        )
+    )
+</code></pre>
+
+<pre><code class="language-python">beta_g = model.beta_g
+print(rv_shape_info(model, beta_g))
+</code></pre>
+
+<pre><code>RV name = beta_g.
+Type of RV = &lt;class 'pymc3.model.FreeRV'&gt;.
+RV shape is a symbolic theano expression, unknown until runtime.
+Distribution shape = []
+logp shape = ().
+</code></pre>
+
+<pre><code class="language-python">z = model.z
+print(rv_shape_info(model, z))
+</code></pre>
+
+<pre><code>RV name = z.
+Type of RV = &lt;class 'pymc3.model.FreeRV'&gt;.
+RV shape is a symbolic theano expression, unknown until runtime.
+Distribution shape = [3]
+logp shape = (3,).
+</code></pre>
+
+<pre><code class="language-python">y = model.y
+print(rv_shape_info(model, y))
+</code></pre>
+
+<pre><code>RV name = y.
+Type of RV = &lt;class 'pymc3.model.ObservedRV'&gt;.
+RV shape is a symbolic theano expression that evaluates to [400].
+Distribution shape = [400]
+logp shape = (400,).
+</code></pre>
+
+<h3 id="shape-handling-in-logp">Shape handling in <code>logp</code></h3>
+
+<p>You may have noticed that I printed something I called <code>logp shape</code>. Lets look at what that is. Each <code>Distribution</code> has a <code>logp</code> method with the following signature:</p>
+
+<pre><code class="language-python">...
+def logp(self, value):
+    ...
+</code></pre>
+
+<p>It takes an input <code>value</code> and returns a <code>theano</code> expression that can later be compiled to compute the logarithm of the probability density function of the distribution, conditioned on the <code>value</code> input. When an RV is instantiated, the distribution&rsquo;s <code>logp</code> is called with one of two possible inputs:</p>
+
+<ol>
+<li>If no <code>observed</code> is provided, <code>logp</code> is called passing the RV as the <code>value</code> argument</li>
+<li>If <code>observed</code> is provided, <code>logp</code> is called passing <code>observed</code> as the <code>value</code> argument</li>
+</ol>
+
+<p>Keep in mind that this simply returns a <code>theano.tensor</code>, called <code>logp_elemwiset</code>, so it still has no value, and hence no shape to check. pymc3 later provides the RVs with two convenience methods to compute <code>logp</code> numerical values by compiling the returned <code>theano.tensor</code> into a function. The first is the widely known <code>rv.logp</code> method, which computes the sum of the <code>logp_elemwiset</code> on a given point input. The second, less known method, is <code>rv.logp_elemwise</code>, which simply returns the numerical output of <code>logp_elemwiset</code> on a given point input. <strong>This means that we can use <code>rv.logp_elemwise</code> to check how a given distribution handles the logp&rsquo;s output <code>shape</code></strong></p>
+
+<p>If you recall the discussion on <code>event_shape</code> and <code>batch_shape</code>, we can compare the <code>logp</code>s of a batch of normals versus a multivariate normal on a given set of observations</p>
+
+<pre><code class="language-python">def model_factory(batch_shape, event_shape, batch_obs=None, event_obs=None):
+    with pm.Model() as model:
+        batch = pm.Normal(
+            &quot;batch&quot;,
+            mu=0,
+            sigma=1,
+            shape=batch_shape,
+            observed=batch_obs,
+        )
+        event = pm.MvNormal(
+            &quot;event&quot;,
+            mu=np.zeros(event_shape),
+            cov=np.diag(np.ones(event_shape)),
+            shape=event_shape,
+            observed=event_obs,
+        )
+    return model
+
+batch_shape = (3,)
+event_shape = (3,)
+sample_shape = (4,)
+# We generate data to later be used as observations
+test_model = model_factory(batch_shape, event_shape)
+b = test_model.batch.random(size=sample_shape)
+e = test_model.event.random(size=sample_shape)
+
+# We create the model passing observations to the RVs so that we can compute logp
+test_model = model_factory(batch_shape, event_shape, batch_obs=b, event_obs=b)
+point = {&quot;batch&quot;: b, &quot;event&quot;: e}
+blp = test_model.batch.logp_elemwise(point)
+elp = test_model.event.logp_elemwise(point)
+
+print(&quot;Shape of draw from a batch of normals        = {}&quot;.format(b.shape))
+print(&quot;Shape of draw from an MvNormal               = {}&quot;.format(e.shape))
+print(&quot;Shape of logp output from a batch of normals = {}&quot;.format(blp.shape))
+print(&quot;Shape of logp output from an MvNormal        = {}&quot;.format(elp.shape))
+print(&quot;Total logp output from a batch of normals    = {}&quot;.format(np.sum(blp)))
+print(&quot;Total logp output from an MvNormal           = {}&quot;.format(np.sum(elp)))
+</code></pre>
+
+<pre><code>Shape of draw from a batch of normals        = (4, 3)
+Shape of draw from an MvNormal               = (4, 3)
+Shape of logp output from a batch of normals = (4, 3)
+Shape of logp output from an MvNormal        = (4,)
+Total logp output from a batch of normals    = -22.535408832791916
+Total logp output from an MvNormal           = -22.53540883279192
+</code></pre>
+
+<p>The previous example highlights the following:</p>
+
+<ul>
+<li><code>event_shape</code> and <code>batch_shape</code> are implicit to a distribution, and only accessible through a single <code>shape</code> argument.</li>
+<li>The <code>logp</code> computations distinguish between the <code>event_shape</code> and <code>batch_shape</code> of distributions, but drawing samples from distributions does not.</li>
+</ul>
+
+<h3 id="posterior-predictive-sampling">Posterior predictive sampling</h3>
+
+<p>We can now draw samples from the posterior predictive distribution and check the output&rsquo;s shape. What we do at the moment is:</p>
+
+<ul>
+<li>We iterate through the points in the <code>trace</code> one at a time. This means that the RV values provided will only have their core dimensions. This makes forward sampling safer but slower.</li>
+
+<li><p>We use the <code>ObservedRV</code>&rsquo;s <code>shape</code> as the <code>distribution_shape</code>, so all samples should have <code>shape=(number_of_points_in_trace,) + observedRV.shape.eval()</code>.</p>
+
+<pre><code class="language-python">print(&quot;Total number of points in trace = {}&quot;.format(len([p for p in trace.points()])))
+</code></pre>
+
+<p>Total number of points in trace = 1000</p>
+
+<pre><code class="language-python">with model:
+ppc = pm.sample_posterior_predictive(trace)
+ppc[&quot;y&quot;].shape
+</code></pre>
+
+<p>100%|██████████| <sup>1000</sup>&frasl;<sub>1000</sub> [00:01&lt;00:00, 829.93it/s]</p>
+
+<p>(1000, 400)</p></li>
+</ul>
+
+<p>To better highlight the <code>shape</code> difference in sampling from an <code>ObservedRV</code>s prior distribution and its posterior predictive we&rsquo;ll use the following model:</p>
+
+<pre><code class="language-python">with pm.Model() as model:
+    mu = pm.Normal(&quot;mu&quot;, 0, 1)
+    obs = pm.Normal(&quot;obs&quot;, mu, 1, shape=(3,), observed=np.random.randn(10, 3) + 1)
+    prior = obs.distribution.random(size=100)
+    trace = pm.sample()
+    ppc = pm.sample_posterior_predictive(trace, samples=100)
+print(&quot;Shape of samples drawn from the prior distribution = {}&quot;.format(prior.shape))
+print(&quot;Shape of samples drawn from the posterior predictive = {}&quot;.format(ppc[&quot;obs&quot;].shape))
+</code></pre>
+
+<pre><code>Auto-assigning NUTS sampler...
+Initializing NUTS using jitter+adapt_diag...
+Multiprocess sampling (2 chains in 2 jobs)
+NUTS: [mu]
+Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000 [00:00&lt;00:00, 2665.14draws/s]
+/home/lpaz/repos/pymc3/pymc3/sampling.py:1109: UserWarning: samples parameter is smaller than nchains times ndraws, some draws and/or chains may not be represented in the returned posterior predictive sample
+  warnings.warn(&quot;samples parameter is smaller than nchains times ndraws, some draws &quot;
+100%|██████████| 100/100 [00:00&lt;00:00, 2240.26it/s]
+
+Shape of samples drawn from the prior distribution = (100, 3)
+Shape of samples drawn from the posterior predictive = (100, 10, 3)
+</code></pre>
+
+    </div>
+
+    
+
+
+    
+
+<div class="article-tags">
+  
+  <a class="badge badge-light" href="/tags/pymc/">pymc</a>
+  
+  <a class="badge badge-light" href="/tags/python/">python</a>
+  
+  <a class="badge badge-light" href="/tags/ppl/">ppl</a>
+  
+</div>
+
+
+
+    
+      
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+  
+  
+    
+  
+  
+  <div class="media author-card" itemscope itemtype="http://schema.org/Person">
+    
+      
+      <img class="portrait mr-3" src="/authors/lucianopaz/avatar_hu52b704268e6a50d65f7b52035f956ba1_630651_250x250_fill_q90_lanczos_center.jpg" itemprop="image" alt="Avatar">
+    
+
+    <div class="media-body">
+      <h5 class="card-title" itemprop="name"><a href="https://lucianopaz.github.io/">Luciano Paz</a></h5>
+      <h6 class="card-subtitle">Postdoctoral researcher in Neuroscience</h6>
+      <p class="card-text" itemprop="description">I specialize in computational models for data analytics</p>
+      <ul class="network-icon" aria-hidden="true">
+        
+          
+          
+          
+            
+          
+          
+          
+          
+          
+            
+          
+          <li>
+            <a itemprop="sameAs" href="/#contact" >
+              <i class="fas fa-envelope"></i>
+            </a>
+          </li>
+        
+          
+          
+          
+            
+          
+          
+          
+          
+          
+            
+          
+          <li>
+            <a itemprop="sameAs" href="https://www.linkedin.com/in/luciano-paz-4139b5123/" target="_blank" rel="noopener">
+              <i class="fab fa-linkedin"></i>
+            </a>
+          </li>
+        
+          
+          
+          
+          
+          
+          
+          
+            
+          
+          <li>
+            <a itemprop="sameAs" href="https://scholar.google.com/citations?user=EoFSUS8AAAAJ" target="_blank" rel="noopener">
+              <i class="ai ai-google-scholar"></i>
+            </a>
+          </li>
+        
+          
+          
+          
+            
+          
+          
+          
+          
+          
+            
+          
+          <li>
+            <a itemprop="sameAs" href="https://github.com/lucianopaz" target="_blank" rel="noopener">
+              <i class="fab fa-github"></i>
+            </a>
+          </li>
+        
+          
+          
+          
+          
+          
+          
+          
+            
+          
+          <li>
+            <a itemprop="sameAs" href="/files/cv.pdf" >
+              <i class="ai ai-cv"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+
+
+      
+      
+      <div class="article-widget">
+        <div class="hr-light"></div>
+        <h3>Related</h3>
+        <ul>
+          
+          <li><a href="/project/pymc3/">PyMC3</a></li>
+          
+          <li><a href="/project/pymc4/">PyMC4</a></li>
+          
+          <li><a href="/project/sensosy_processing_in_rats/">Sensory processing in rats</a></li>
+          
+        </ul>
+      </div>
+      
+    
+
+    
+
+    
+<section id="comments">
+  
+    
+  <section class="staticman-comments post-comments">
+    
+      
+    
+    
+    
+    
+    <h3>Comments</h3>
+    
+
+    
+    
+    
+      <p>Be the first to leave a comment.</p>
+    
+    
+    <div id="comment-submitted" class="dialog">
+  <h3></h3>
+  <p></p>
+  
+</div>
+
+<div id="comment-error" class="dialog">
+  <h3>OOPS!</h3>
+  <p></p>
+  <p> <a href="https://github.com///issues"> clicking here</a>.</p>
+</div>
+
+<div id="comment-form">
+  <h3 id="comment-form-header">Say something</h3>
+  Your email is used to get your <a href="https://gravatar.com" target="_blank">Gravatar</a> image and send reply notifications only.
+  <form class="post-new-comment" method="POST" action="https://dev.staticman.net/v3/entry/github////comments">
+    <input type="hidden" name="options[redirect]" value="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/#comment-submitted">
+    <input type="hidden" name="options[redirectError]" value="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/#comment-error">
+    <input type="hidden" name="options[slug]" value="pymc3_shapes_part1">
+    <input type="hidden" name="options[section]" value="post">
+    <input type="hidden" name="options[origin]" value="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/">
+    <input type="hidden" name="options[parent]" value="pymc3_shapes_part1">
+    <input type="hidden" name="fields[reply_to]" value="">
+    <input type="address" name="fields[botpot]" placeholder="botpot (do not fill!)" style="display:none">
+    
+
+    <fieldset>
+      <input class="post-comment-field" name="fields[name]" type="text" placeholder="Name *">
+    </fieldset>
+
+    <fieldset>
+      <input class="post-comment-field" name="fields[email]" type="email" placeholder="Email address (will not be public) *">
+    </fieldset>
+
+    <fieldset>
+      <textarea class="post-comment-field" name="fields[body]" placeholder="Comment (markdown is accepted) *" rows="10"></textarea>
+    </fieldset>
+
+    
+
+    <fieldset>
+      
+      <input type="submit" class="post-comment-field btn btn-primary" value="Submit">
+    </fieldset>
+
+  </form>
+</div>
+
+
+
+
+
+  </section>
+
+
+  
+</section>
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+    <script src="/js/mathjax-config.js"></script>
+    
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.2.5/jquery.fancybox.min.js" integrity="sha256-X5PoE3KU5l+JcX+w09p/wHl9AzK333C4hJ2I9S5mD4M=" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js" integrity="sha256-aYTdUrn6Ow1DDgh5JTc3aDGnnju48y/1c8s1dgkYPQ8=" crossorigin="anonymous"></script>
+        
+      
+
+      
+      
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS_CHTML-full" integrity="sha256-GhM+5JHb6QUzOQPXSJLEWP7R73CbkisjzK5Eyij4U9w=" crossorigin="anonymous" async></script>
+      
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js" integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log==" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>hljs.initHighlightingOnLoad();</script>
+    
+
+    
+    
+    <script>
+      const search_index_filename = "/index.json";
+      const i18n = {
+        'placeholder': "Search...",
+        'results': "results found",
+        'no_results': "No results found"
+      };
+      const content_type = {
+        'post': "Posts",
+        'project': "Projects",
+        'publication' : "Publications",
+        'talk' : "Talks"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.16bbb3750feb7244c9bc409a5a4fe678.js"></script>
+
+    
+
+
+
+
+
+
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+
+  <p class="powered-by">
+    MIT &middot; 
+
+    Powered by the
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic theme</a> for
+    <a href="https://gohugo.io" target="_blank" rel="noopener">Hugo</a>.
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" id="back_to_top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cite</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Copy
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
