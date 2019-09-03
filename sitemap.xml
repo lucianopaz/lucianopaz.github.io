@@ -31,13 +31,13 @@
   </url>
   
   <url>
-    <loc>https://lucianopaz.github.io/tags/ppl/</loc>
+    <loc>https://lucianopaz.github.io/categories/ppl/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://lucianopaz.github.io/categories/ppl/</loc>
+    <loc>https://lucianopaz.github.io/tags/ppl/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
     <priority>0</priority>
   </url>
@@ -144,22 +144,22 @@
   </url>
   
   <url>
-    <loc>https://lucianopaz.github.io/tags/machine-learning/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
     <loc>https://lucianopaz.github.io/categories/machine-learning/</loc>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://lucianopaz.github.io/tags/neuroscience/</loc>
+    <loc>https://lucianopaz.github.io/tags/machine-learning/</loc>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://lucianopaz.github.io/categories/neuroscience/</loc>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/neuroscience/</loc>
     <priority>0</priority>
   </url>
   
