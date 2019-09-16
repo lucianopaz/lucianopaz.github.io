@@ -5,17 +5,30 @@
   <url>
     <loc>https://lucianopaz.github.io/categories/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
   </url>
   
   <url>
     <loc>https://lucianopaz.github.io/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
   </url>
   
   <url>
     <loc>https://lucianopaz.github.io/post/</loc>
+    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/categories/ppl/</loc>
+    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/ppl/</loc>
+    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/pymc/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
   </url>
   
@@ -25,33 +38,13 @@
   </url>
   
   <url>
-    <loc>https://lucianopaz.github.io/tags/</loc>
-    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/categories/ppl/</loc>
-    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/ppl/</loc>
-    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/pymc/</loc>
-    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
     <loc>https://lucianopaz.github.io/tags/python/</loc>
     <lastmod>2019-08-19T00:00:00+00:00</lastmod>
-    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/</loc>
+    <lastmod>2019-08-19T00:00:00+00:00</lastmod>
   </url>
   
   <url>
@@ -62,13 +55,11 @@
   <url>
     <loc>https://lucianopaz.github.io/categories/other/</loc>
     <lastmod>2019-08-04T00:00:00+00:00</lastmod>
-    <priority>0</priority>
   </url>
   
   <url>
     <loc>https://lucianopaz.github.io/tags/other/</loc>
     <lastmod>2019-08-04T00:00:00+00:00</lastmod>
-    <priority>0</priority>
   </url>
   
   <url>
@@ -76,8 +67,15 @@
   </url>
   
   <url>
+    <loc>https://lucianopaz.github.io/tags/artificial-intelligence/</loc>
+  </url>
+  
+  <url>
     <loc>https://lucianopaz.github.io/authors/</loc>
-    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/behavior/</loc>
   </url>
   
   <url>
@@ -85,7 +83,39 @@
   </url>
   
   <url>
+    <loc>https://lucianopaz.github.io/tags/databases/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/geodata/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/javascript/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/categories/machine-learning/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/machine-learning/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/categories/neuroscience/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/neuroscience/</loc>
+  </url>
+  
+  <url>
     <loc>https://lucianopaz.github.io/project/phd4pmi/</loc>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/tags/php/</loc>
   </url>
   
   <url>
@@ -94,12 +124,14 @@
   
   <url>
     <loc>https://lucianopaz.github.io/project/</loc>
-    <priority>0</priority>
   </url>
   
   <url>
     <loc>https://lucianopaz.github.io/publication_types/</loc>
-    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://lucianopaz.github.io/categories/pymc/</loc>
   </url>
   
   <url>
@@ -116,61 +148,6 @@
   
   <url>
     <loc>https://lucianopaz.github.io/project/sensosy_processing_in_rats/</loc>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/artificial-intelligence/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/behavior/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/databases/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/geodata/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/javascript/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/categories/machine-learning/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/machine-learning/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/categories/neuroscience/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/neuroscience/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/tags/php/</loc>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://lucianopaz.github.io/categories/pymc/</loc>
-    <priority>0</priority>
   </url>
   
 </urlset>
