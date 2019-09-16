@@ -12,18 +12,5 @@
       <link>https://lucianopaz.github.io/authors/lucianopaz/</link>
     </image>
     
-    <item>
-      <title></title>
-      <link>https://lucianopaz.github.io/authors/lucianopaz/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://lucianopaz.github.io/authors/lucianopaz/</guid>
-      <description>&lt;p&gt;I&amp;rsquo;m currently a computational neuroscience researcher. I&amp;rsquo;ve worked mostly building computational and mathematical models for behavior ranging from simple perceptual tasks in rodents to complex planning in humans. My specialty is to extract meaningful and actionable information from data.&lt;/p&gt;
-
-&lt;p&gt;I&amp;rsquo;ve worked with diverse tools and frameworks such as bayesian inference, machine learning, artificial intelligence, and stochastic dynamics.&lt;/p&gt;
-
-&lt;p&gt;I&amp;rsquo;m also part of the development team of the pymc probabilistic programming packages written in python.&lt;/p&gt;
-</description>
-    </item>
-    
   </channel>
 </rss>
