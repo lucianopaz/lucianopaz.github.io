@@ -27,7 +27,7 @@
 &lt;li&gt;How does a distribution&amp;rsquo;s &lt;code&gt;shape&lt;/code&gt; determine the &lt;code&gt;shape&lt;/code&gt; of its &lt;code&gt;logp&lt;/code&gt; output.&lt;/li&gt;
 &lt;li&gt;The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions.&lt;/li&gt;
 &lt;li&gt;The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes.&lt;/li&gt;
-&lt;li&gt;Some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them). &lt;em&gt;In a separate blog post!&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;I plan to write a separate post with some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them).&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&#34;the-origin-of-all-evil-ambiguity&#34;&gt;The origin of all &lt;del&gt;evil&lt;/del&gt; ambiguity&lt;/h2&gt;
@@ -333,7 +333,7 @@ sns.distplot([unvectorized_prior_sampler() for _ in range(5000)]);
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;&lt;img src=&#34;index_files/index_33_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://lucianopaz.github.io/pymc3_shapes_part1_files/pymc3_shapes_part1_33_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
 
 &lt;p&gt;Nice! Everything works! Now lets try to do the same but taking advantage of &lt;code&gt;size&lt;/code&gt; to draw multiple values at once and vectorize operations&lt;/p&gt;
 
@@ -462,7 +462,7 @@ return normal(np.einsum(&amp;quot;...i,...i&amp;quot;, X, beta), sigma, size=sam
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;p&gt;&lt;img src=&#34;index_files/index_42_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://lucianopaz.github.io/pymc3_shapes_part1_files/pymc3_shapes_part1_42_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
 
 &lt;p&gt;Things can still go horribly wrong if we pass a stack of multiple &lt;code&gt;X&lt;/code&gt; vectors. This is a big deal because it happens when we set more than a single observed &lt;code&gt;X&lt;/code&gt; and &lt;code&gt;y&lt;/code&gt;.&lt;/p&gt;
 
@@ -535,7 +535,7 @@ for offset, (p, color) in enumerate(zip(prior.T, colors)):
 plt.axis(&amp;quot;off&amp;quot;);
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;img src=&#34;index_files/index_46_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://lucianopaz.github.io/pymc3_shapes_part1_files/pymc3_shapes_part1_46_0.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
 
 &lt;h4 id=&#34;summary&#34;&gt;Summary&lt;/h4&gt;
 
@@ -616,7 +616,7 @@ Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000
 The number of effective samples is smaller than 25% for some parameters.
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;img src=&#34;index_files/index_50_3.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://lucianopaz.github.io/pymc3_shapes_part1_files/pymc3_shapes_part1_50_3.png&#34; alt=&#34;png&#34; /&gt;&lt;/p&gt;
 
 &lt;p&gt;The resulting trace seems mostly fine, the posterior densities are around where they should be, and the model seems to have converged well enough (I don&amp;rsquo;t show the checks here to avoid clobbering the post). Lets just pay attention to the &lt;code&gt;shape&lt;/code&gt; parameters that I passed along in the model&amp;rsquo;s definition.&lt;/p&gt;
 
