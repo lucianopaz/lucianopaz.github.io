@@ -116,16 +116,17 @@
   
   
     
+    
   
   
-  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:card" content="summary">
   
   <meta property="og:site_name" content="Luciano Paz">
   <meta property="og:url" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/">
   <meta property="og:title" content="PyMC3 shape handling | Luciano Paz">
   <meta property="og:description" content="This post is intended to explain:
- What the shape attribute of a pymc3 RV is. What&rsquo;s the difference between an RV&rsquo;s and its associated distribution&rsquo;s shape. How does a distribution&rsquo;s shape determine the shape of its logp output. The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions. The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes."><meta property="og:image" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/featured.jpg">
-  <meta property="twitter:image" content="https://lucianopaz.github.io/2019/08/19/pymc3-shape-handling/featured.jpg"><meta property="og:locale" content="en-us">
+ What the shape attribute of a pymc3 RV is. What&rsquo;s the difference between an RV&rsquo;s and its associated distribution&rsquo;s shape. How does a distribution&rsquo;s shape determine the shape of its logp output. The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions. The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes."><meta property="og:image" content="https://lucianopaz.github.io/img/icon-192.png">
+  <meta property="twitter:image" content="https://lucianopaz.github.io/img/icon-192.png"><meta property="og:locale" content="en-us">
   
     
       <meta property="article:published_time" content="2019-08-19T00:00:00&#43;00:00">
@@ -378,26 +379,18 @@
 
 
 
-
-
-
-
-
-
-
+  
 
   
   
-    
   
-
-
 <div class="article-container pt-3">
   <h1 itemprop="name">PyMC3 shape handling</h1>
 
   
 
   
+    
 
 
 
@@ -536,7 +529,7 @@
 
 </div>
 
-  
+    
 
 
 
@@ -588,14 +581,7 @@
 </div>
 
 
-</div>
-
-
-<div class="article-header article-container featured-image-wrapper mt-4 mb-4" style="max-width: 720px; max-height: 503px;">
-  <div style="position: relative">
-    <img src="/2019/08/19/pymc3-shape-handling/featured_huea7725a461d6ea7c46a3b4309cd37930_425025_720x0_resize_q90_lanczos.jpg" alt="" class="featured-image">
-    <span class="article-header-caption">&ldquo;<em>Lasciate ogni speranza, voi che entrate qui</em> ”</br>Allegedly Dante&rsquo;s words when he wrote about the many dimensions of shape hell</span>
-  </div>
+  
 </div>
 
 
@@ -613,7 +599,7 @@
 <li>How does a distribution&rsquo;s <code>shape</code> determine the <code>shape</code> of its <code>logp</code> output.</li>
 <li>The potential trouble this can bring with samples drawn from the prior or from the posterior predictive distributions.</li>
 <li>The many implicit semantically relevant shapes associated with pymc3 models. We will follow the naming convention used by tensorflow probability and talk about sample, batch and event shapes.</li>
-<li>Some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them). <em>In a separate blog post!</em></li>
+<li>I plan to write a separate post with some best practices to avoid falling into the many circles of shape hell (or at least be able to maneuver inside them).</li>
 </ul>
 
 <h2 id="the-origin-of-all-evil-ambiguity">The origin of all <del>evil</del> ambiguity</h2>
@@ -919,7 +905,7 @@ sns.distplot([unvectorized_prior_sampler() for _ in range(5000)]);
 </code></pre></li>
 </ol>
 
-<p><img src="index_files/index_33_0.png" alt="png" /></p>
+<p><img src="/pymc3_shapes_part1_files/pymc3_shapes_part1_33_0.png" alt="png" /></p>
 
 <p>Nice! Everything works! Now lets try to do the same but taking advantage of <code>size</code> to draw multiple values at once and vectorize operations</p>
 
@@ -1048,7 +1034,7 @@ return normal(np.einsum(&quot;...i,...i&quot;, X, beta), sigma, size=sample_shap
 </code></pre></li>
 </ol>
 
-<p><img src="index_files/index_42_0.png" alt="png" /></p>
+<p><img src="/pymc3_shapes_part1_files/pymc3_shapes_part1_42_0.png" alt="png" /></p>
 
 <p>Things can still go horribly wrong if we pass a stack of multiple <code>X</code> vectors. This is a big deal because it happens when we set more than a single observed <code>X</code> and <code>y</code>.</p>
 
@@ -1121,7 +1107,7 @@ for offset, (p, color) in enumerate(zip(prior.T, colors)):
 plt.axis(&quot;off&quot;);
 </code></pre>
 
-<p><img src="index_files/index_46_0.png" alt="png" /></p>
+<p><img src="/pymc3_shapes_part1_files/pymc3_shapes_part1_46_0.png" alt="png" /></p>
 
 <h4 id="summary">Summary</h4>
 
@@ -1202,7 +1188,7 @@ Sampling 2 chains, 0 divergences: 100%|██████████| 2000/2000
 The number of effective samples is smaller than 25% for some parameters.
 </code></pre>
 
-<p><img src="index_files/index_50_3.png" alt="png" /></p>
+<p><img src="/pymc3_shapes_part1_files/pymc3_shapes_part1_50_3.png" alt="png" /></p>
 
 <p>The resulting trace seems mostly fine, the posterior densities are around where they should be, and the model seems to have converged well enough (I don&rsquo;t show the checks here to avoid clobbering the post). Lets just pay attention to the <code>shape</code> parameters that I passed along in the model&rsquo;s definition.</p>
 
